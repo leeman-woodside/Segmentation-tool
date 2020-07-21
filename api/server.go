@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+var folderStructure = make(map[string][]string)
+
 type Image struct {
 	ID      primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	ImgName string             `json:"imgName,omitempty" bson:"imgName,omitempty"`
@@ -95,12 +97,12 @@ func UploadFile(response http.ResponseWriter, request *http.Request) {
 	}
 	defer file.Close()
 
-	err = os.MkdirAll("../frontend/app/dist/"+uploadType+"/"+filepath.Dir(handler.Filename), 0755)
+	err = os.MkdirAll("../ui/dist/"+uploadType+"/"+filepath.Dir(handler.Filename), 0755)
 	if err != nil {
 		fmt.Println("err 2.5", err)
 	}
 
-	resFile, err := os.Create("../frontend/app/dist/" + uploadType + "/" + handler.Filename)
+	resFile, err := os.Create("../ui/dist/" + uploadType + "/" + handler.Filename)
 	if err != nil {
 		fmt.Println("err 3", err)
 	}
@@ -116,14 +118,13 @@ func UploadFile(response http.ResponseWriter, request *http.Request) {
 
 }
 
-func GetServerLocation(w http.ResponseWriter, r *http.Request) {
+func GetFolderLocation(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fileType := params["type"]
 	w.Header().Add("content-type", "application/json")
-	var folderStructure = make(map[string][]string)
 	var currentFolder = ""
-	err := filepath.Walk("../frontend/app/dist/"+fileType+"/", func(path string, info os.FileInfo, err error) error {
-		if path == "../frontend/app/dist/"+fileType+"/" {
+	err := filepath.Walk("../ui/dist/"+fileType+"/", func(path string, info os.FileInfo, err error) error {
+		if path == "../ui/dist/"+fileType+"/" {
 			return nil
 		}
 
@@ -135,17 +136,17 @@ func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 
 		fileBase := filepath.Base(path)
 
-		switch mode := fi.Mode(); {
-		case mode.IsDir():
+		mode := fi.Mode()
+		if mode.IsDir() {
 			folderStructure[fileBase] = []string{}
 			currentFolder = fileBase
 			// do directory stuff
 			fmt.Println("directory")
-		case mode.IsRegular():
-			// do file stuff
-			folderStructure[currentFolder] = append(folderStructure[currentFolder], fileBase)
-			fmt.Println("file")
 		}
+		// case mode.IsRegular():
+		// 	// do file stuff
+		// 	folderStructure[currentFolder] = append(folderStructure[currentFolder], fileBase)
+		// 	fmt.Println("file")
 
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
@@ -164,9 +165,20 @@ func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GetFileLocation(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	folder := params["type"]
+	var files []string
+	w.Header().Add("content-type", "application/json")
+	//iterate thru a certain number of files for the first Get and
+	//then only load the next unloaded image as masks are saved
+	files = append(files, "../ui/dist/images/"+folder+"/")
+	folderStructure[folder] = append(folderStructure[folder], files)
+
+}
+
 func main() {
 	fmt.Println("Starting the application...")
-	// uri := "mongodb+srv://lee_woodside:maxilloeyennulla@cluster0.5u26p.gcp.mongodb.net/Segmentation_Web_App?retryWrites=true&w=majority"
 	// ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// client, _ = mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	// router.HandleFunc("/image", CreateImageEndpoint).Methods("POST")
@@ -174,10 +186,10 @@ func main() {
 	// router.HandleFunc("/image/{id}", GetImageEndpoint).Methods("GET")
 	router := mux.NewRouter()
 	router.HandleFunc("/upload/{type}", UploadFile).Methods("POST")
-	router.HandleFunc("/imageLocation/{type}", GetServerLocation).Methods("GET")
+	router.HandleFunc("/imageLocation/{type}", GetFolderLocation).Methods("GET")
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
-	static := negroni.NewStatic(http.Dir("../frontend/app/dist"))
+	static := negroni.NewStatic(http.Dir("../ui/dist"))
 	n.Use(static)
 	n.UseHandler(router)
 	http.ListenAndServe(":8082", n)

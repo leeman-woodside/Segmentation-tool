@@ -1,136 +1,138 @@
 <template>
-  <div class="Tool" @mousedown="preventDefault">
-    <b-navbar type="dark" variant="dark">
-      <b-navbar-brand href="https://www.smartvisionworks.com/"></b-navbar-brand>
-      <b-navbar-nav>
-        <b-button class="nav-bar-button" v-b-toggle.sidebar-2>Instruction</b-button>
-          <b-button 
-            class="nav-bar-button"          
-            v-b-toggle.sidebar-1
+  <container fluid>
+    <div class="Tool" @mousedown="preventDefault">
+      <b-navbar type="dark" variant="dark">
+        <b-navbar-brand href="https://www.smartvisionworks.com/"></b-navbar-brand>
+        <b-navbar-nav>
+          <b-button class="nav-bar-button" v-b-toggle.sidebar-2>Instruction</b-button>
+            <b-button 
+              class="nav-bar-button"          
+              v-b-toggle.sidebar-1
+            >
+              View Files
+            </b-button>
+        </b-navbar-nav>
+      </b-navbar>
+      <b-sidebar class="col-sm-2 col-md-1 sidebar" id="sidebar-1" shadow>
+        <template v-slot:title>
+          <div style="text-align: right" >
+            Files
+            <b-button @click="getFiles">
+              <svg 
+              width="1em" 
+              height="1em" 
+              viewBox="0 0 16 16" 
+              class="bi bi-arrow-clockwise" 
+              fill="currentColor" 
+              xmlns="http://www.w3.org/2000/svg"
+              >
+                <path fill-rule="evenodd" d="M3.17 6.706a5 5 0 0 1 7.103-3.16.5.5 0 1 0 .454-.892A6 6 0 1 0 13.455 5.5a.5.5 0 0 0-.91.417 5 5 0 1 1-9.375.789z"/>
+                <path fill-rule="evenodd" d="M8.147.146a.5.5 0 0 1 .707 0l2.5 2.5a.5.5 0 0 1 0 .708l-2.5 2.5a.5.5 0 1 1-.707-.708L10.293 3 8.147.854a.5.5 0 0 1 0-.708z"/>
+              </svg>
+            </b-button>
+          </div>
+        </template>
+        <div class="px-3 py-2">
+          <b-table 
+            striped 
+            hover 
+            selectable
+            select-mode="single"
+            @row-selected="showFiles"
+            sticky-header="500px"
+            :items="folders"
+            :fields="fields"
           >
-            View Files
-          </b-button>
-      </b-navbar-nav>
-    </b-navbar>
-    <b-sidebar class="col-sm-2 col-md-1 sidebar" id="sidebar-1" shadow>
-      <template v-slot:title>
-        <div style="text-align: right" >
-          Files
-          <b-button @click="getFiles">
-            <svg 
-            width="1em" 
-            height="1em" 
-            viewBox="0 0 16 16" 
-            class="bi bi-arrow-clockwise" 
-            fill="currentColor" 
-            xmlns="http://www.w3.org/2000/svg"
-            >
-              <path fill-rule="evenodd" d="M3.17 6.706a5 5 0 0 1 7.103-3.16.5.5 0 1 0 .454-.892A6 6 0 1 0 13.455 5.5a.5.5 0 0 0-.91.417 5 5 0 1 1-9.375.789z"/>
-              <path fill-rule="evenodd" d="M8.147.146a.5.5 0 0 1 .707 0l2.5 2.5a.5.5 0 0 1 0 .708l-2.5 2.5a.5.5 0 1 1-.707-.708L10.293 3 8.147.854a.5.5 0 0 1 0-.708z"/>
-            </svg>
-          </b-button>
+          </b-table>
+          <br/>
+          <b-pagination
+            v-model="currentPage"
+            :total-rows="rows"
+            :per-page="perPage"
+            aria-controls="files"
+          ></b-pagination>
+          <p class="mt-3">Current Page: {{ currentPage }}</p>
+          <b-table 
+            id="files"
+            striped 
+            hover 
+            selectable
+            select-mode="single"
+            @row-selected="toggle"
+            sticky-header="500px"
+            :per-page="perPage"
+            :current-page="currentPage"
+            :items="files"
+            :fields="fields2"
+            small
+          >
+            <template v-slot:cell(image)="data">
+              <img :src="`/images/${activeFolder}/${data.item.image}`" style="height: 55px">
+            </template>
+            <template v-slot:cell(mask)="data">
+              <img 
+                v-if="mask_Data[activeFolder] && mask_Data[activeFolder].includes(data.item.image)"
+                :src="`/masks/${activeFolder}/${data.item.image}`" 
+                style="height: 55px"
+              >
+            </template>
+          </b-table>
         </div>
-      </template>
-      <div class="px-3 py-2">
-        <b-table 
-          striped 
-          hover 
-          selectable
-          select-mode="single"
-          @row-selected="showFiles"
-          sticky-header="500px"
-          :items="folders"
-          :fields="fields"
-        >
-        </b-table>
-        <br/>
-        <b-pagination
-          v-model="currentPage"
-          :total-rows="rows"
-          :per-page="perPage"
-          aria-controls="files"
-        ></b-pagination>
-        <p class="mt-3">Current Page: {{ currentPage }}</p>
-        <b-table 
-          id="files"
-          striped 
-          hover 
-          selectable
-          select-mode="single"
-          @row-selected="toggle"
-          sticky-header="500px"
-          :per-page="perPage"
-          :current-page="currentPage"
-          :items="files"
-          :fields="fields2"
-          small
-        >
-          <template v-slot:cell(image)="data">
-            <img :src="`/images/${activeFolder}/${data.item.image}`" style="height: 55px">
-          </template>
-          <template v-slot:cell(mask)="data">
-            <img 
-              v-if="mask_Data[activeFolder] && mask_Data[activeFolder].includes(data.item.image)"
-              :src="`/masks/${activeFolder}/${data.item.image}`" 
-              style="height: 55px"
-            >
-          </template>
-        </b-table>
+      </b-sidebar>
+      <b-sidebar class="sidebar" id="sidebar-2" title="Instructions" shadow>
+        <div class="px-3 py-2">
+          <ol>
+            <li><b>1.</b> Upload Files by clicking "Upload Files" button.</li>
+            <li><b>2.</b> Click and drag on the image to make a rectangle around desired object.</li>
+            <li><b>3.</b> Click "Select" or press the spacebar to segment the desired area.</li>
+            <li><b>4.</b> If the outcome is acceptable click "Save".</li>
+            <li><b>5.</b> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' and draw on the image using the respective tools for foreground and background areas.</li>
+            <li><b>6.</b> Click "Select" again to re-segment on the new selections.</li>
+            <li><b>7.</b> Continue this process on the image until desired segmentation has been achieved.</li>
+            <li><b>8.</b> Click "Save" and repeat this process for each image.</li>
+            <li><b>9.</b> When all images have been completed and saved click the download button on the top toolbar to retreave your masks.</li>
+            <li><b>10.</b> Good Job!</li>
+          </ol>
+        </div>
+      </b-sidebar>
+      <div style="padding: 20px">
+        <canvas id="canvasOutput" ref="canvasOutput" style="width: 512px; height: 512px;" :style="{cursor: cursorType}"></canvas>
+        <canvas id="canvasInput" style="width: 512px; height: 512px;"></canvas>
+        <canvas id="canvasMask" style="width: 512px; height: 512px; display: none;"></canvas>
       </div>
-    </b-sidebar>
-    <b-sidebar class="sidebar" id="sidebar-2" title="Instructions" shadow>
-      <div class="px-3 py-2">
-        <ol>
-          <li><b>1.</b> Upload Files by clicking "Upload Files" button.</li>
-          <li><b>2.</b> Click and drag on the image to make a rectangle around desired object.</li>
-          <li><b>3.</b> Click "Select" or press the spacebar to segment the desired area.</li>
-          <li><b>4.</b> If the outcome is acceptable click "Save".</li>
-          <li><b>5.</b> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' and draw on the image using the respective tools for foreground and background areas.</li>
-          <li><b>6.</b> Click "Select" again to re-segment on the new selections.</li>
-          <li><b>7.</b> Continue this process on the image until desired segmentation has been achieved.</li>
-          <li><b>8.</b> Click "Save" and repeat this process for each image.</li>
-          <li><b>9.</b> When all images have been completed and saved click the download button on the top toolbar to retreave your masks.</li>
-          <li><b>10.</b> Good Job!</li>
-        </ol>
-      </div>
-    </b-sidebar>
-    <div style="padding: 20px">
-      <canvas id="canvasOutput" ref="canvasOutput" style="width: 512px; height: 512px;" :style="{cursor: cursorType}"></canvas>
-      <canvas id="canvasInput" style="width: 512px; height: 512px;"></canvas>
-      <canvas id="canvasMask" style="width: 512px; height: 512px; display: none;"></canvas>
+      <b-row class="justify-content-md-center">
+        <b-button-toolbar v-if="this.toolActive" key-nav aria-label="Toolbar with button groups">
+          <div>
+            <b-button-group class="mx-1">
+              <b-button b-button v-b-tooltip.hover.bottom="'(left-arrow)'" @click="prev">
+                <b-icon icon="arrow-left" aria-hidden="true"></b-icon>
+              </b-button>
+              <b-button b-button v-b-tooltip.hover.bottom="'(right-arrow)'"  @click="next">
+                <b-icon icon="arrow-right" aria-hidden="true"></b-icon>
+              </b-button>
+            </b-button-group>
+          </div>
+          <div>
+            <b-button-group  class="mx-1">
+              <b-button v-b-tooltip.hover.bpointer.bottom="'(F)'" @click="fgDraw">Foreground</b-button>
+              <b-button v-b-tooltip.hover.bottom="'(B)'" @click="bgDraw">Background</b-button>
+              <b-button v-b-tooltip.hover.bottom="'(C)'" @click="continueDraw">Continue</b-button>
+              <b-button v-b-tooltip.hover.bottom="'(U)'" @click="undo">
+                <b-icon icon="arrow-counterclockwise" aria-hidden="true"></b-icon>
+                Undo
+              </b-button>
+              <b-button v-b-tooltip.hover.bottom="'(R)'" @click="resetImg">Reset</b-button>
+            </b-button-group>
+          </div>
+          <div>
+            <b-button-group  class="mx-1">
+              <b-button v-b-tooltip.hover.bottom="'(S)'" v-if="selected" @click="saveMask">Save</b-button>
+            </b-button-group>
+          </div>
+        </b-button-toolbar>
+      </b-row>
     </div>
-    <b-row class="justify-content-md-center">
-      <b-button-toolbar v-if="this.toolActive" key-nav aria-label="Toolbar with button groups">
-        <div>
-          <b-button-group class="mx-1">
-            <b-button b-button v-b-tooltip.hover.bottom="'(left-arrow)'" @click="prev">
-              <b-icon icon="arrow-left" aria-hidden="true"></b-icon>
-            </b-button>
-            <b-button b-button v-b-tooltip.hover.bottom="'(right-arrow)'"  @click="next">
-              <b-icon icon="arrow-right" aria-hidden="true"></b-icon>
-            </b-button>
-          </b-button-group>
-        </div>
-        <div>
-          <b-button-group  class="mx-1">
-            <b-button v-b-tooltip.hover.bpointer.bottom="'(F)'" @click="fgDraw">Foreground</b-button>
-            <b-button v-b-tooltip.hover.bottom="'(B)'" @click="bgDraw">Background</b-button>
-            <b-button v-b-tooltip.hover.bottom="'(C)'" @click="continueDraw">Continue</b-button>
-            <b-button v-b-tooltip.hover.bottom="'(U)'" @click="undo">
-              <b-icon icon="arrow-counterclockwise" aria-hidden="true"></b-icon>
-              Undo
-            </b-button>
-            <b-button v-b-tooltip.hover.bottom="'(R)'" @click="resetImg">Reset</b-button>
-          </b-button-group>
-        </div>
-        <div>
-          <b-button-group  class="mx-1">
-            <b-button v-b-tooltip.hover.bottom="'(S)'" v-if="selected" @click="saveMask">Save</b-button>
-          </b-button-group>
-        </div>
-      </b-button-toolbar>
-    </b-row>
-  </div>
+  </container>
 </template>
 
 <script>
@@ -214,7 +216,6 @@ export default {
   },
   methods: {
     preventDefault (e) {
-      console.log(e)
       e.preventDefault()
     },
     toggle (items) {
@@ -236,6 +237,7 @@ export default {
             .then((response) => {
               console.log(response.data);
               self.image_Data = response.data
+              // self.folders = response.data
               resolve()
             })
             .catch((error) => {
@@ -258,7 +260,6 @@ export default {
       )
       Promise.all(promises).then(() => {
         this.getFolders()
-        console.log('here')
       }).catch((error) => {
         console.log(error)
       })

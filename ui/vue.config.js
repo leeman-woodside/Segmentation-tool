@@ -1,14 +1,14 @@
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
-    .BundleAnalyzerPlugin;
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer')
+//     .BundleAnalyzerPlugin;
 
 module.exports = {
   runtimeCompiler: true,
   devServer: {
     proxy: "http://localhost:8082"
   },
-  configureWebpack: {
-    plugins: [new BundleAnalyzerPlugin()]
-  },
+  // configureWebpack: {
+  //   plugins: [new BundleAnalyzerPlugin()]
+  // },
   // optimization: {
   //   runtimeChunk: 'single',
   //   splitChunks: {
