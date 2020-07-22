@@ -66,7 +66,7 @@
             :fields="fields2"
             small
           >
-            <template v-slot:cell(image)="data">
+            <!-- <template v-slot:cell(image)="data">
               <img :src="`/images/${activeFolder}/${data.item.image}`" style="height: 55px">
             </template>
             <template v-slot:cell(mask)="data">
@@ -75,7 +75,7 @@
                 :src="`/masks/${activeFolder}/${data.item.image}`" 
                 style="height: 55px"
               >
-            </template>
+            </template> -->
           </b-table>
         </div>
       </b-sidebar>
@@ -148,6 +148,7 @@ export default {
       perPage: 4,
       currentPage: 1,
       index: '',
+      imageArray: [],
       img: new Image(),
       width: 512,
       height: 512,
@@ -223,8 +224,46 @@ export default {
       console.log(items[0].image)
       this.activeFile = this.image_Data[this.activeFolder][this.activeIndex]
       console.log(this.image_Data[this.activeFolder][this.activeIndex])
-      this.img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][this.activeIndex]}`
+      this.createImageArray()
+      this.img.src = this.imageArray[4]
       this.resetImg()
+    },
+
+    createImageArray() {
+      if (this.imageArray.length === 0) {
+        let index = this.activeIndex
+        let img1 = new Image()
+        img1.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
+        this.imageArray.push(img1)
+        for (var i = 0; i < 3; i++) {
+          let img2 = new Image()
+          if (index === this.image_Data[this.activeFolder].length - 1) {
+            img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][0]}`
+            index = 0
+          }
+          else {
+            img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index + i]}`
+            this.imageArray.push(img2)
+          }
+        }
+        for (var j = 0; j < 3; j++) {
+          let img3 = new Image()
+          if (index === 0) {
+            index = this.image_Data[this.activeFolder].length - 1
+            img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
+          }
+          else {
+            img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index - j]}`
+            this.imageArray.push(img3)
+          }
+        }
+        console.log(this.imageArray)
+      }
+      else if (this.imageArray.length === 7) {
+        //if backwards unshift() adding to the front and pop() popping off the back
+
+        //if forwards shift() off the front and push() to the back
+      }
     },
 
     getFiles () {
@@ -332,7 +371,7 @@ export default {
       else {
         this.activeIndex = this.image_Data[this.activeFolder].length - 1
       }
-      this.img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][this.activeIndex]}`
+      this.img.src = this.imageArray[4]
       this.resetImg()
     },
     next () {
@@ -368,7 +407,7 @@ export default {
       this.addWeightedMat = new cv.Mat()
       this.grabCutMask.delete()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      this.img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][this.activeIndex]}`
+      this.img.src = this.imageArray[4]
       this.img.onload = () => {
         this.showImg()
         cv.imshow('canvasInput', blank)
