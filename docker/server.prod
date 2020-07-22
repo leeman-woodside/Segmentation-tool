@@ -1,0 +1,15 @@
+# vim: ft=dockerfile:
+
+FROM docker_server-dev as BUILD
+COPY ./server /code/src/server
+RUN cd /code/src/server && go install
+
+
+FROM docker_ui-dev as BUILD2
+COPY ./ui /ui
+RUN cd /ui/app && npm run build
+
+FROM debian:buster
+RUN mkdir /app
+COPY --from=BUILD /go/bin/server /app/server
+COPY --from=BUILD2 /ui/app/dist /app/public

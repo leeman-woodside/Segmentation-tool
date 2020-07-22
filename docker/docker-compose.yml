@@ -1,0 +1,32 @@
+version: '2'
+services:
+
+  server-dev:
+    build:
+      context: ../server
+      dockerfile: ../docker/server.dev
+    container_name: seg-app-server-dev
+    network_mode: "host"
+    privileged: true
+    volumes:
+      - ../server:/go/src/server
+    working_dir: /go/src/server
+    command: /bin/bash
+
+  server-prod:
+    build:
+      context: ../
+      dockerfile: docker/server.prod
+    container_name: seg-app-server-prod
+
+  ui-dev:
+    build:
+      context: ../ui
+      dockerfile: ../docker/ui.dev
+    container_name: seg-app_ui
+    network_mode: "host"
+    volumes:
+      - /ui/app:/ui/app
+      - /ui/app/node_modules
+    working_dir: /ui/app
+    command: /bin/bash

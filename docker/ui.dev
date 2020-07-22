@@ -1,0 +1,9 @@
+# vim: ft=dockerfile:
+FROM node:14.4.0-buster
+
+COPY ./ /ui
+RUN cd /ui/app && npm i -g npm-check-updates
+RUN cd /ui/app && npm-check-updates -u
+RUN npm install -g @vue/cli
+
+RUN cd /ui/app && npm install

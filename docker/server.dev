@@ -1,0 +1,15 @@
+# vim: ft=dockerfile:
+FROM golang:1.13.6-buster
+
+MAINTAINER Leeman Woodside <leeman356@gmail.com>
+
+ENV GOPATH /go 
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+
+
+COPY ./ /go/src/server
+RUN cd /go/src/server
+RUN go get server
+
+# Install all the go modules needed
+RUN cd /go/src/server && go list -e $(go list -m all)
