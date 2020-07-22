@@ -148,7 +148,7 @@ export default {
       perPage: 4,
       currentPage: 1,
       index: '',
-      imageArray: [],
+      bufferArray: [],
       img: new Image(),
       width: 512,
       height: 512,
@@ -221,48 +221,46 @@ export default {
     },
     toggle (items) {
       this.activeIndex = this.image_Data[this.activeFolder].indexOf(items[0].image)
-      console.log(items[0].image)
       this.activeFile = this.image_Data[this.activeFolder][this.activeIndex]
-      console.log(this.image_Data[this.activeFolder][this.activeIndex])
-      this.createImageArray()
-      this.img.src = this.imageArray[4]
+      this.createBufferArray()
       this.resetImg()
     },
 
-    createImageArray() {
-      if (this.imageArray.length === 0) {
-        let index = this.activeIndex
-        let img1 = new Image()
-        img1.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
-        this.imageArray.push(img1)
-        for (var i = 0; i < 3; i++) {
-          let img2 = new Image()
-          if (index === this.image_Data[this.activeFolder].length - 1) {
-            img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][0]}`
-            index = 0
-          }
-          else {
-            img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index + i]}`
-            this.imageArray.push(img2)
-          }
+    createBufferArray() {
+      this.bufferArray = []
+      console.log('creating buffer array')
+      let popIndex = this.activeIndex
+      let unshiftIndex = this.activeIndex
+      let img1 = new Image()
+      img1.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][this.activeIndex]}`
+      this.bufferArray.push(img1)
+      for (var i = 1; i < 4; i++) {
+        let img2 = new Image()
+        if (popIndex === this.image_Data[this.activeFolder].length - 1) {
+          popIndex = 0
+          img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][popIndex]}`
         }
-        for (var j = 0; j < 3; j++) {
-          let img3 = new Image()
-          if (index === 0) {
-            index = this.image_Data[this.activeFolder].length - 1
-            img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
-          }
-          else {
-            img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index - j]}`
-            this.imageArray.push(img3)
-          }
+        else {
+          popIndex = popIndex + 1
+          img2.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][popIndex]}`
         }
-        console.log(this.imageArray)
+        this.bufferArray.push(img2)
       }
-      else if (this.imageArray.length === 7) {
-        //if backwards unshift() adding to the front and pop() popping off the back
-
-        //if forwards shift() off the front and push() to the back
+      for (var j = 1; j < 4; j++) {
+        let img3 = new Image()
+        if (unshiftIndex === 0) {
+          unshiftIndex = this.image_Data[this.activeFolder].length - 1
+          img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][unshiftIndex]}`
+        }
+        else {
+          unshiftIndex = unshiftIndex - 1
+          img3.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][unshiftIndex]}`
+        }
+        this.bufferArray.unshift(img3)
+      }
+      this.img.src = this.bufferArray[3].src
+      for (var k = 0; k < this.bufferArray.length; k ++) {
+        console.log(this.bufferArray[k].src)
       }
     },
 
@@ -364,22 +362,56 @@ export default {
         }
       }
     },
+
     prev () {
+      this.bufferArray.pop()
+      let img = new Image()
+      let index = this.activeIndex
       if (this.activeIndex > 0) {
         this.activeIndex -= 1
       }
       else {
         this.activeIndex = this.image_Data[this.activeFolder].length - 1
       }
-      this.img.src = this.imageArray[4]
+      //if backwards unshift() adding to the front and pop() popping off the back
+      if (this.activeIndex - 3 < 0) {
+        index = (this.image_Data[this.activeFolder].length - 1) + (this.activeIndex - 3)
+        img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index + 1]}`
+        this.bufferArray.unshift(img)
+      }
+      else {
+        index = this.activeIndex - 3
+        img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
+        this.bufferArray.unshift(img)
+      }
+      for (var k = 0; k < this.bufferArray.length; k ++) {
+        console.log(this.bufferArray[k].src)
+      }
       this.resetImg()
     },
     next () {
+      this.bufferArray.shift()
+      let img = new Image()
+      let index = this.activeIndex
       if (this.activeIndex === this.image_Data[this.activeFolder].length - 1) {
         this.activeIndex = 0
       }
       else {
         this.activeIndex += 1
+      }
+      //if forwards shift() off the front and push() to the back
+      if (this.activeIndex + 3 > this.image_Data[this.activeFolder].length - 1) {
+        index = (this.activeIndex + 3) - (this.image_Data[this.activeFolder].length - 1)
+        img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index - 1]}`
+        this.bufferArray.push(img)
+      }
+      else {
+        index = this.activeIndex + 3
+        img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
+        this.bufferArray.push(img)
+      }
+      for (var k = 0; k < this.bufferArray.length; k ++) {
+        console.log(this.bufferArray[k].src)
       }
       this.resetImg()
     },
@@ -407,7 +439,7 @@ export default {
       this.addWeightedMat = new cv.Mat()
       this.grabCutMask.delete()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      this.img.src = this.imageArray[4]
+      this.img.src = this.bufferArray[3].src
       this.img.onload = () => {
         this.showImg()
         cv.imshow('canvasInput', blank)
