@@ -105,7 +105,7 @@
 
 <script>
 import axios from 'axios'
-import * as FileSaver from 'file-saver'
+import * as FileSaver from 'FileSaver'
 import * as Zip from 'jszip'
 import * as ZipUtil from 'jszip-utils'
 

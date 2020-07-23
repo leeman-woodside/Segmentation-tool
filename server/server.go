@@ -89,12 +89,12 @@ func UploadFile(response http.ResponseWriter, request *http.Request) {
 	}
 	defer file.Close()
 
-	err = os.MkdirAll("../ui/dist/"+uploadType+"/"+filepath.Dir(handler.Filename), 0755)
+	err = os.MkdirAll("public/"+uploadType+"/"+filepath.Dir(handler.Filename), 0755)
 	if err != nil {
 		fmt.Println("err 2.5", err)
 	}
 
-	resFile, err := os.Create("../ui/dist/" + uploadType + "/" + handler.Filename)
+	resFile, err := os.Create("public/" + uploadType + "/" + handler.Filename)
 	if err != nil {
 		fmt.Println("err 3", err)
 	}
@@ -116,8 +116,8 @@ func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "application/json")
 	var folderStructure = make(map[string][]string)
 	var currentFolder = ""
-	err := filepath.Walk("../ui/dist/"+fileType+"/", func(path string, info os.FileInfo, err error) error {
-		if path == "../ui/dist/"+fileType+"/" {
+	err := filepath.Walk("public/"+fileType+"/", func(path string, info os.FileInfo, err error) error {
+		if path == "public/"+fileType+"/" {
 			return nil
 		}
 
@@ -158,8 +158,13 @@ func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("NOT FINDING W", w)
+	http.ServeFile(w, r, "public/index.html")
+}
+
 func main() {
-	fmt.Println("Starting the application...")
+	fmt.Println("Starting the application")
 	// uri := "mongodbsrv://lee_woodside:maxilloeyennulla@cluster0.5u26p.gcp.mongodb.net/Segmentation_Web_App?retryWrites=true&w=majority"
 	// ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// client, _ = mongo.Connect(ctx, options.Client().ApplyURI(uri))
@@ -167,12 +172,14 @@ func main() {
 	// router.HandleFunc("/images", GetImagesEndpoint).Methods("GET")
 	// router.HandleFunc("/image/{id}", GetImageEndpoint).Methods("GET")
 	router := mux.NewRouter()
+	router.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	router.HandleFunc("/upload/{type}", UploadFile).Methods("POST")
 	router.HandleFunc("/imageLocation/{type}", GetServerLocation).Methods("GET")
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
-	static := negroni.NewStatic(http.Dir("../ui/dist"))
+	static := negroni.NewStatic(http.Dir("public"))
 	n.Use(static)
 	n.UseHandler(router)
-	http.ListenAndServe(":8082", n)
+	fmt.Println("INFO : Server Started")
+	http.ListenAndServe("0.0.0.0:80", n)
 }
