@@ -1,0 +1,45 @@
+h1, h2 {
+  font-weight: normal;
+}
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+li {
+  display: inline-block;
+  margin: 0 10px;
+}
+a {
+  color: #539ecf;
+}
+canvas {
+  background-color: #343a40;
+  border: 10px !important;
+  border-color: #343a40;
+  margin: 2px;
+}
+.file-viewer {
+  box-shadow: none !important;
+  border: none !important;
+  font-size: small !important;
+}
+.navbar-brand {
+  width: 16.6666%;
+  height: 60px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100%;
+  padding: 25px 0;
+  float: left;
+  transition: all 0.3s ease;
+  background-image: url(../assets/name.svg);
+  color: rgba(255, 255, 255, 0.8);
+}
+.nav-bar-button {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+.nav-bar-button:hover {
+  background-color: #5a6268 !important;
+  border-color: #5a6268 !important;
+}

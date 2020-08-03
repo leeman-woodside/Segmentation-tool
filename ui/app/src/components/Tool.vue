@@ -15,20 +15,10 @@
       </b-navbar>
       <b-sidebar class="col-sm-2 col-md-1 sidebar" id="sidebar-1" shadow>
         <template v-slot:title>
-          <div style="text-align: right" >
+          <div>
             Files
-            <b-button @click="getFiles">
-              <svg 
-              width="1em" 
-              height="1em" 
-              viewBox="0 0 16 16"
-              class="bi bi-arrow-clockwise" 
-              fill="currentColor" 
-              xmlns="http://www.w3.org/2000/svg"
-              >
-                <path fill-rule="evenodd" d="M3.17 6.706a5 5 0 0 1 7.103-3.16.5.5 0 1 0 .454-.892A6 6 0 1 0 13.455 5.5a.5.5 0 0 0-.91.417 5 5 0 1 1-9.375.789z"/>
-                <path fill-rule="evenodd" d="M8.147.146a.5.5 0 0 1 .707 0l2.5 2.5a.5.5 0 0 1 0 .708l-2.5 2.5a.5.5 0 1 1-.707-.708L10.293 3 8.147.854a.5.5 0 0 1 0-.708z"/>
-              </svg>
+            <b-button class="refresh-button" @click="getFiles">
+              <b-icon-arrow-clockwise></b-icon-arrow-clockwise>
             </b-button>
           </div>
         </template>
@@ -131,33 +121,29 @@ export default {
   name: 'Tool',
   data () {
     return {
+      scrollY: 0,
+      scrollX: 0,
       activeFolder: '',
-      index: '',
       bufferArray: [],
       img: new Image(),
       width: 512,
       height: 512,
-      mat: '',
-      imageView: '',
-      image: '',
-      tempMask2: '',
-      finalMaskResult: '',
+      masterMat: '',
+      originalImage: '',
+      matUpdate: '',
       greenMask: '',
       redMask: '',
-      addWeightedMat: '',
-      img_dir: [],
-      img_dir_pos: 0,
+      blank: '',
       rect: '',
-      p1: '',
-      p3: '',
-      p2: '',
+      rectPoint1: {},
+      rectPoint2: {},
       drawColor: '',
       rectColor: '',
       drawType: '',
       alpha: -0.5,
       beta: 1,
       gamma: 1,
-      count: 0,
+      maskObjCount: 0,
       drawing: false,
       drawLine: false,
       selected: false,
@@ -170,13 +156,10 @@ export default {
       undoPointsBg: [],
       undoPoints: [],
       undoMats: [],
-      fileNames: [],
       image_Data: null,
       mask_Data: null,
       activeIndex: -1,
       cursorType: 'crosshair',
-      actionVariant: 'outline-secondary',
-      downloadColor: 'warning',
       fields: [
         'folder_name',
         'images',
@@ -204,14 +187,12 @@ export default {
     },
     toggle (items) {
       this.activeIndex = this.image_Data[this.activeFolder].indexOf(items[0].image)
-      this.activeFile = this.image_Data[this.activeFolder][this.activeIndex]
       this.createBufferArray()
       this.resetImg()
     },
 
     createBufferArray() {
       this.bufferArray = []
-      console.log('creating buffer array')
       let popIndex = this.activeIndex
       let unshiftIndex = this.activeIndex
       let img1 = new Image()
@@ -242,9 +223,9 @@ export default {
         this.bufferArray.unshift(img3)
       }
       this.img.src = this.bufferArray[3].src
-      for (var k = 0; k < this.bufferArray.length; k ++) {
-        console.log(this.bufferArray[k].src)
-      }
+      // for (var k = 0; k < this.bufferArray.length; k ++) {
+      //   console.log(this.bufferArray[k].src)
+      // }
     },
 
     getFiles () {
@@ -255,9 +236,7 @@ export default {
         new Promise(function(resolve, reject) {
           axios.get('/imageLocation/images')
             .then((response) => {
-              console.log(response.data);
               self.image_Data = response.data
-              // self.folders = response.data
               resolve()
             })
             .catch((error) => {
@@ -269,7 +248,6 @@ export default {
         new Promise(function(resolve, reject) {
           axios.get('/imageLocation/masks')
             .then((response) => {
-              console.log(response.data);
               self.mask_Data = response.data
               resolve()
             })
@@ -286,7 +264,6 @@ export default {
     },
 
     getFolders () {
-      console.log('here')
       this.folders = []
       for (let folder in this.image_Data) {
         this.folders.push({
@@ -294,7 +271,6 @@ export default {
             'images': this.image_Data[folder].length,
             'masks': this.mask_Data[folder] ? this.mask_Data[folder].length : 0
           })
-        console.log(this.folders)
       }
     },
 
@@ -302,7 +278,6 @@ export default {
       this.files = []
       this.activeFolder = items[0].folder_name
       let self = this
-      console.log(items)
       this.image_Data[items[0].folder_name].forEach(function(filename){
         if (self.mask_Data[self.activeFolder] && self.mask_Data[self.activeFolder].includes(filename)) {
           self.files.push({
@@ -317,12 +292,10 @@ export default {
           })
         }
       })
-      console.log(this.files)
     },
 
     saveMask () {
-      this.addMask(this.finalMaskResult)
-      this.actionVariant = 'outline-success'
+      cv.imshow('canvasMask', this.grabCutMask)
       var canvas = document.getElementById('canvasMask')
       var self = this
       canvas.toBlob(function (blob) {
@@ -331,19 +304,21 @@ export default {
         axios.post('/upload/masks', formData)
         .then((response) => {
           console.log(response);
-        }, (error) => {
+          self.getFiles()
+        })
+        .catch((error) => {
           console.log(error);
         });
         self.next()
-        self.getFiles()
       })
     },
 
     // Canvas/Image navigation and output
     showImg () {
-      this.mat = cv.imread(this.img)
-      cv.resize(this.mat, this.imageView, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
-      cv.imshow('canvasOutput', this.imageView)
+      this.originalImage = cv.imread(this.img)
+      cv.resize(this.originalImage, this.originalImage, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
+      this.masterMat = this.originalImage.clone()
+      cv.imshow('canvasOutput', this.masterMat)
       if (this.mask_Data[this.activeFolder] && this.mask_Data[this.activeFolder].includes(this.activeFile)) {
         var mask = new Image()
         mask.src = `/masks/${this.activeFolder}/${this.activeFile}`
@@ -364,7 +339,7 @@ export default {
       else {
         this.activeIndex = this.image_Data[this.activeFolder].length - 1
       }
-      //if backwards unshift() adding to the front and pop() popping off the back
+      //unshift() adding to the front and pop() popping off the back
       if (this.activeIndex - 3 < 0) {
         index = (this.image_Data[this.activeFolder].length - 1) + (this.activeIndex - 3)
         img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index + 1]}`
@@ -374,9 +349,6 @@ export default {
         index = this.activeIndex - 3
         img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
         this.bufferArray.unshift(img)
-      }
-      for (var k = 0; k < this.bufferArray.length; k ++) {
-        console.log(this.bufferArray[k].src)
       }
       this.resetImg()
     },
@@ -401,16 +373,11 @@ export default {
         img.src = `/images/${this.activeFolder}/${this.image_Data[this.activeFolder][index]}`
         this.bufferArray.push(img)
       }
-      for (var k = 0; k < this.bufferArray.length; k ++) {
-        console.log(this.bufferArray[k].src)
-      }
       this.resetImg()
     },
 
     resetImg () {
-      var blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(52, 64, 58, 255))
       this.cursorType = 'crosshair'
-      this.actionVariant = 'outline-secondary'
       this.selected = false
       this.drawLine = false
       this.drawing = false
@@ -423,24 +390,31 @@ export default {
       this.undoPoints = []
       this.undoMats = []
       delete this.rect
-      this.count = 0
-      this.finalMaskResult.delete()
-      this.finalMaskResult = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      this.addWeightedMat.delete()
-      this.addWeightedMat = new cv.Mat()
+      this.maskObjCount = 0
       this.grabCutMask.delete()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       this.img.src = this.bufferArray[3].src
       this.img.onload = () => {
         this.showImg()
-        cv.imshow('canvasInput', blank)
+        cv.imshow('canvasInput', this.blank)
       }
     },
 
     // Mouse Events
     mouseDown (e) {
       if (!this.drawLine) {
-        this.p3 = e.point
+        this.rectPoint1.x = e.point.x + this.scrollX
+        this.rectPoint1.y = e.point.y + this.scrollY
+        this.rectangle(e)
+        this.rectDrawn = true
+      }
+      else {
+        this.fg_bg_PointArrayTracker (e.point)
+        this.draw(e)
+      }
+    },
+    mouseDrag (e) {
+      if (!this.drawLine) {
         this.rectangle(e)
         this.rectDrawn = true
       }
@@ -448,72 +422,51 @@ export default {
         this.draw(e)
       }
     },
-    mouseDrag (e) {
-      if (e.event.which == 2 || e.event.which == 4) {
-        paper.view.center = e.downPoint.subtract(e.point).add(paper.view.center);
-      }
-      else {
-        if (!this.drawLine) {
-          this.rectangle(e)
-          this.rectDrawn = true
-        }
-        else {
-          this.draw(e)
-        }
-      }
-    },
     mouseUp () {
       if (this.foregroundPoints.length > 0 || this.backgroundPoints.length > 0) {
-        var lastMat = this.image.clone()
+        var lastMat = this.imageDraw.clone()
         this.undoMats.push(lastMat)
       }
       if (this.undoPointsFg.length > 0) {
+        console.log('pushing fg UNDO points to UNDO array')
         this.undoPoints.push(this.undoPointsFg)
         this.undoPointsFg = []
       }
       if (this.undoPointsBg.length > 0) {
+        console.log('pushing bg UNDO points to UNDO array')
         this.undoPoints.push(this.undoPointsBg)
         this.undoPointsBg = []
       }
     },
-    // mouseWheel (e) {
-    //   // Store previous view state.
-    // var oldZoom = paper.view.zoom;
-    // var oldCenter = paper.view.center;
 
-    // // Get mouse position.
-    // // It needs to be converted into project coordinates system.
-    // var mousePosition = paper.view.viewToProject(new paper.Point(e.offsetX, e.offsetY));
-
-    // // Update view zoom.
-    // var newZoom = e.deltaY > 0
-    //     ? oldZoom * 1.5
-    //     : oldZoom / 1.5;
-    // paper.view.zoom = newZoom;
-
-    // // Update view position.
-    // paper.view.center += (mousePosition - oldCenter) * (1 - (oldZoom / newZoom));
-    // },
-
-    // Drawing and stuff
+    //drawing and stuff
+    fg_bg_PointArrayTracker (p) {
+      if (this.drawLine) {
+        if (this.drawType === 'Fore point') {
+          this.foregroundPoints.push(p)
+          this.undoPointsFg.push(p)
+          this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 1
+          
+        }
+        else if (this.drawType === 'Back point') {
+          this.backgroundPoints.push(p)
+          this.undoPointsBg.push(p)
+          this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 0
+        }
+      }
+    },
     draw (e) {
-      this.p1 = e.point
+      let drawPoint = {}
+      drawPoint.x = e.point.x + this.scrollX
+      drawPoint.y = e.point.y + this.scrollY
       this.drawing = true
-      cv.circle(this.image, this.p1, 2, this.drawColor, -1)
+      cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
       if (this.foregroundPoints.length === 0 && this.backgroundPoints.length === 0) {
-        var tmpImg = this.image.clone()
-        console.log('original image coppied')
+        var tmpImg = this.imageDraw.clone()
         this.undoMats.push(tmpImg)
       }
-      if (this.drawType === 'Fore point') {
-        this.foregroundPoints.push(this.p1)
-        this.undoPointsFg.push(this.p1)
-      }
-      else if (this.drawType === 'Back point') {
-        this.backgroundPoints.push(this.p1)
-        this.undoPointsBg.push(this.p1)
-      }
-      cv.imshow('canvasOutput', this.image)
+      this.fg_bg_PointArrayTracker (drawPoint)
+      cv.imshow('canvasOutput', this.imageDraw)
     },
     fgDraw () {
       if (this.selected) {
@@ -533,39 +486,39 @@ export default {
     },
     rectangle (e) {
       this.rectColor = new cv.Scalar(0, 0, 255, 255)
-      this.p2 = e.point
       delete this.rect
-      this.image.delete()
-      if (this.p2.x > this.width) {
-        this.p2.x = this.width - 2
-      }
-      if (this.p2.y > this.height) {
-        this.p2.y = this.height - 2
-      }
-      this.p2.x = this.p2.x < 0 ? 1 : this.p2.x
-      this.p2.y = this.p2.y < 0 ? 1 : this.p2.y
-      var rectWidth = Math.abs(this.p2.x - this.p3.x)
-      var rectHeight = Math.abs(this.p2.y - this.p3.y)
-      this.image = this.imageView.clone()
-      this.rect = new cv.Rect(Math.min(this.p2.x, this.p3.x), Math.min(this.p2.y, this.p3.y), rectWidth, rectHeight)
-      cv.rectangle(this.image, this.p2, this.p3, this.rectColor, 2)
-      cv.imshow('canvasOutput', this.image)
+      this.imageDraw.delete()
+      this.rectPoint2.x = e.point.x + this.scrollX
+      this.rectPoint2.y = e.point.y + this.scrollY
+      this.rectPoint2.x = this.rectPoint2.x > this.width ? this.width - 2 : this.rectPoint2.x
+      this.rectPoint2.y = this.rectPoint2.y > this.height ? this.height - 2 : this.rectPoint2.y
+      this.rectPoint2.x = this.rectPoint2.x < 0 ? 1 : this.rectPoint2.x
+      this.rectPoint2.y = this.rectPoint2.y < 0 ? 1 : this.rectPoint2.y
+      var rectWidth = Math.abs(this.rectPoint2.x - this.rectPoint1.x)
+      var rectHeight = Math.abs(this.rectPoint2.y - this.rectPoint1.y)
+      this.imageDraw = this.masterMat.clone()
+      this.rect = new cv.Rect(Math.min(this.rectPoint2.x, this.rectPoint1.x), Math.min(this.rectPoint2.y, this.rectPoint1.y), rectWidth, rectHeight)
+      cv.rectangle(this.imageDraw, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
+      cv.imshow('canvasOutput', this.imageDraw)
     },
     continueDraw () {
-      this.addMask(this.finalMaskResult)
-      this.count += 1
+      // cv.resize(this.originalImage, this.originalImage, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
+      let weightedMat = new cv.Mat()
+      let gcMask = this.grabCutMask.clone()
+      let originalMat = this.originalImage.clone()
+      this.maskObjCount += 1
       this.continue = true
-      this.grabCutMask.delete()
-      this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      console.log('deleted grabcutMask')
-      cv.imshow('canvasMask', this.finalMaskResult)
+      cv.imshow('canvasMask', this.grabCutMask)
       this.selected = false
       this.drawLine = false
       this.drawing = false
       this.foregroundPoints = []
       this.backgroundPoints = []
-      // this.imageView = this.addWeightedMat.clone()
-      cv.imshow('canvasOutput', this.imageView)
+      cv.cvtColor(gcMask, gcMask, 1, 0)
+      cv.cvtColor(originalMat, originalMat, 1, 0)
+      cv.addWeighted(gcMask, 0.3, originalMat, this.beta, this.gamma, weightedMat)
+      this.masterMat = weightedMat.clone()
+      cv.imshow('canvasOutput', this.masterMat)
       this.drawType = 'rect'
       this.cursorType = 'crosshair'
       this.rectColor = new cv.Scalar(0, 0, 255, 255)
@@ -576,13 +529,13 @@ export default {
         console.log('Background', this.backgroundPoints.length)
         this.undoMats.splice(this.undoMats.length - 1, 1)
         cv.imshow('canvasOutput', this.undoMats[this.undoMats.length - 1])
-        this.image = this.undoMats[this.undoMats.length - 1].clone()
-        var points = this.undoPoints
+        this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
+        var self = this
         this.foregroundPoints = this.foregroundPoints.filter(function (el) {
-          return !points[points.length - 1].includes(el)
+          return !self.undoPoints[self.undoPoints.length - 1].includes(el)
         })
         this.backgroundPoints = this.backgroundPoints.filter(function (el) {
-          return !points[points.length - 1].includes(el)
+          return !self.undoPoints[self.undoPoints.length - 1].includes(el)
         })
         console.log('Foreground', this.foregroundPoints.length)
         console.log('Background', this.backgroundPoints.length)
@@ -594,91 +547,78 @@ export default {
     select () {
       if (this.rectDrawn) {
         this.selected = true
-        this.grab_Cut()
+        var weightedMat = new cv.Mat()
+        var greenOverlay = new cv.Mat()
+        var mask = this.grab_Cut()
+        cv.cvtColor(mask, mask, 1, 0)
+        cv.cvtColor(this.masterMat, this.masterMat, 1, 0)
+        cv.addWeighted(this.greenMask, this.alpha, mask, this.beta, this.gamma, greenOverlay)
+        cv.addWeighted(greenOverlay, this.alpha, this.masterMat, this.beta, this.gamma, weightedMat)
+        cv.rectangle(weightedMat, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
+        cv.imshow('canvasInput', this.grabCutMask)
+        cv.imshow('canvasOutput', weightedMat)
+        greenOverlay.delete()
       }
     },
     grab_Cut () {
-      var maskView = this.imageView.clone()
-      var tempMat1 = new cv.Mat()
-      var tempMat3 = new cv.Mat()
-      var tempMat4 = new cv.Mat()
-      var greenOverlay = new cv.Mat()
+      var maskView = this.masterMat.clone()
       var bgdModel = new cv.Mat()
       var fgdModel = new cv.Mat()
+      var mode
       var resizeRect = new cv.Rect(this.rect.x * 0.5, this.rect.y * 0.5, this.rect.width * 0.5, this.rect.height * 0.5)
       cv.cvtColor(maskView, maskView, 1, 0)
-      var mode
       if (this.drawing) {
-        console.log('foreground points', this.foregroundPoints.length)
-        console.log('background points', this.backgroundPoints.length)
         mode = cv.GC_INIT_WITH_MASK
-        for (var i = 0; i < this.foregroundPoints.length; i++) {
-          this.tempMask2.ucharPtr(this.foregroundPoints[i].y * 0.5, this.foregroundPoints[i].x * 0.5)[0] = 1
-        }
-        for (i = 0; i < this.backgroundPoints.length; i++) {
-          this.tempMask2.ucharPtr(this.backgroundPoints[i].y * 0.5, this.backgroundPoints[i].x * 0.5)[0] = 0
-        }
       }
       else {
         mode = cv.GC_INIT_WITH_RECT
       }
-      cv.resize(maskView, tempMat1, new cv.Size(256, 256), 0, 0, cv.INTER_NEAREST)
-      cv.grabCut(tempMat1, this.tempMask2, resizeRect, bgdModel, fgdModel, 4, mode)
-      cv.resize(this.tempMask2, tempMat3, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
-      tempMat4 = this.createMask(tempMat3).clone()
-      cv.cvtColor(tempMat4, tempMat4, 1, 0)
-      cv.cvtColor(this.imageView, this.imageView, 1, 0)
-      cv.addWeighted(this.greenMask, this.alpha, tempMat4.clone(), this.beta, this.gamma, greenOverlay)
-      cv.addWeighted(greenOverlay.clone(), this.alpha, this.imageView, this.beta, this.gamma, this.addWeightedMat)
-      cv.rectangle(this.addWeightedMat, this.p3, this.p2, this.rectColor, 2)
-      cv.imshow('canvasInput', this.grabCutMask)
-      cv.imshow('canvasOutput', this.addWeightedMat)
-      maskView.delete(); tempMat1.delete(); tempMat3.delete(); tempMat4.delete(); greenOverlay.delete(); bgdModel.delete(); fgdModel.delete()
+      cv.resize(maskView, maskView, new cv.Size(256, 256), 0, 0, cv.INTER_NEAREST)
+      cv.grabCut(maskView, this.matUpdate, resizeRect, bgdModel, fgdModel, 4, mode)
+      cv.resize(this.matUpdate, maskView, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
+      maskView = this.createMask(maskView).clone()
+      bgdModel.delete(); fgdModel.delete()
+      return maskView
     },
     createMask (maskTmp) {
       var blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      var oneMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(1))
-      var threeMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(3))
-      var subMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(this.count))
+      var isFGMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(cv.GC_FGD))
+      var probFGMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(cv.GC_PR_FGD))
+      var subMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(this.maskObjCount))
       var foreMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0))
-      cv.compare(maskTmp, oneMat, oneMat, cv.CMP_EQ)
-      cv.compare(maskTmp, threeMat, threeMat, cv.CMP_EQ)
-      cv.bitwise_or(oneMat, threeMat, foreMask)
+      cv.compare(maskTmp, isFGMat, isFGMat, cv.CMP_EQ)
+      cv.compare(maskTmp, probFGMat, probFGMat, cv.CMP_EQ)
+      cv.bitwise_or(isFGMat, probFGMat, foreMask)
       cv.subtract(foreMask, subMat, foreMask)
       cv.add(blank, foreMask, maskTmp)
-      oneMat.delete(); threeMat.delete(); subMat.delete(); foreMask.delete()
-      this.grabCutMask = maskTmp.clone()
+      isFGMat.delete(); probFGMat.delete(); subMat.delete(); foreMask.delete()
+      cv.add(this.grabCutMask, maskTmp, this.grabCutMask)
       return maskTmp
     },
-    addMask (finalMask) {
-      cv.add(finalMask, this.grabCutMask, finalMask)
-      cv.imshow('canvasMask', finalMask)
-      return finalMask
-    },
+  },
 
-    mouseEvent () {
-      console.log('hi')
-    }
+  created () {
+    document.body.addEventListener('scroll', (e) => {
+      this.scrollX = e.target.scrollLeft
+      this.scrollY = e.target.scrollTop
+    });
   },
 
   mounted () {
-    cv['onRuntimeInitialized'] = () => {
-      console.log(cv)
+    cv['onRuntimeInitialized'] = () => { 
       this.getFiles()
-      this.mat = new cv.Mat()
-      this.imageView = new cv.Mat()
-      this.image = new cv.Mat()
-      this.tempMask2 = new cv.Mat()
+      this.masterMat = new cv.Mat()
+      this.originalImage = new cv.Mat()
+      this.matUpdate = new cv.Mat()
+      this.imageDraw = new cv.Mat()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      this.finalMaskResult = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       this.greenMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(152, 231, 153, 100))
-      this.redMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(231, 152, 165, 100))
-      this.addWeightedMat = new cv.Mat()
+      // this.redMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(231, 152, 165, 100))
+      this.blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(52, 64, 58, 255))
       var tool = new paper.Tool()
       tool.onMouseDown = this.mouseDown
       tool.onMouseDrag = this.mouseDrag
       tool.onMouseUp = this.mouseUp
-      tool.mousewheel = this.mouseWheel
       paper.setup(this.$refs['canvasOutput'])
       this.img.onload = () => {
         this.showImg()
@@ -689,28 +629,28 @@ export default {
         // this.preventDefault(e)
         if (this.toolActive) {
           switch (e.code) {
-            case 'ArrowUp':
-              if (this.rectDrawn) {
-                var greenOverlay = new cv.Mat()
-                cv.cvtColor(this.grabCutMask, this.grabCutMask, 1, 0)
-                cv.cvtColor(this.imageView, this.imageView, 1, 0)
-                cv.addWeighted(this.greenMask, this.alpha, this.grabCutMask, this.beta, this.gamma, greenOverlay)
-                cv.addWeighted(greenOverlay, this.alpha, this.imageView, this.beta, this.gamma, this.addWeightedMat)
-                cv.imshow('canvasInput', this.addWeightedMat)
-                greenOverlay.delete()
-              }
-              break
-            case 'ArrowDown':
-              if (this.rectDrawn) {
-                var redOverlay = new cv.Mat()
-                cv.cvtColor(this.grabCutMask, this.grabCutMask, 1, 0)
-                cv.cvtColor(this.imageView, this.imageView, 1, 0)
-                cv.addWeighted(this.redMask, this.alpha, this.grabCutMask, this.beta, this.gamma, redOverlay)
-                cv.addWeighted(redOverlay, this.alpha, this.imageView, this.beta, this.gamma, this.addWeightedMat)
-                cv.imshow('canvasInput', this.addWeightedMat)
-                redOverlay.delete()
-              }
-              break
+            // case 'ArrowUp':
+            //   if (this.rectDrawn) {
+            //     var greenOverlay = new cv.Mat()
+            //     cv.cvtColor(this.grabCutMask, this.grabCutMask, 1, 0)
+            //     cv.cvtColor(this.masterMat, this.masterMat, 1, 0)
+            //     cv.addWeighted(this.greenMask, this.alpha, this.grabCutMask, this.beta, this.gamma, greenOverlay)
+            //     cv.addWeighted(greenOverlay, this.alpha, this.masterMat, this.beta, this.gamma, this.addWeightedMat)
+            //     cv.imshow('canvasInput', this.addWeightedMat)
+            //     greenOverlay.delete()
+            //   }
+            //   break
+            // case 'ArrowDown':
+            //   if (this.rectDrawn) {
+            //     var redOverlay = new cv.Mat()
+            //     cv.cvtColor(this.grabCutMask, this.grabCutMask, 1, 0)
+            //     cv.cvtColor(this.masterMat, this.masterMat, 1, 0)
+            //     cv.addWeighted(this.redMask, this.alpha, this.grabCutMask, this.beta, this.gamma, redOverlay)
+            //     cv.addWeighted(redOverlay, this.alpha, this.masterMat, this.beta, this.gamma, this.addWeightedMat)
+            //     cv.imshow('canvasInput', this.addWeightedMat)
+            //     redOverlay.delete()
+            //   }
+            //   break
             case 'ArrowLeft':
               this.prev()
               this.resetImg()
@@ -720,6 +660,7 @@ export default {
               this.resetImg()
               break
             case 'Space':
+              this.preventDefault(e)
               this.select()
               break
             case 'KeyF':
@@ -763,60 +704,12 @@ export default {
 </script>
 
 <style scoped>
-h1, h2 {
-  font-weight: normal;
+.refresh-button {
+  background: none;
+  border: none; 
+  color: #95999d;
 }
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #539ecf;
-}
-canvas {
-  background-color: #343a40;
-  border: 10px !important;
-  border-color: #343a40;
-  margin: 2px;
-}
-.file-viewer {
-  box-shadow: none !important;
-  border: none !important;
-  font-size: small !important;
-}
-.navbar-brand {
-  width: 16.6666%;
-  height: 60px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100%;
-  padding: 25px 0;
-  float: left;
-  transition: all 0.3s ease;
-  background-image: url(../assets/name.svg);
-  color: rgba(255, 255, 255, 0.8);
-}
-.nav-bar-button {
-  background-color: transparent !important;
-  border-color: transparent !important;
-}
-.nav-bar-button:hover {
-  background-color: #5a6268 !important;
-  border-color: #5a6268 !important;
-}
-.b-sidebar-body{
-  background-color: black !important;
-}
-.b-sidebar-btn-secondary {
-  width: 100%;
-}
-.card-main {
-  margin-top: 20px;
-  background-color: #343a40;
-  border: none;
+.refresh-button:hover {
+  color: #343a40 !important;
 }
 </style>

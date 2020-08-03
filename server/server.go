@@ -103,7 +103,7 @@ func UploadFile(response http.ResponseWriter, request *http.Request) {
 	io.Copy(resFile, file)
 	defer resFile.Close()
 
-	fmt.Println("File Info")
+	fmt.Println("FILE INFO")
 	fmt.Println("File Name:", handler.Filename)
 	fmt.Println("File Size:", handler.Size)
 	fmt.Println("File Type:", handler.Header)
@@ -134,25 +134,23 @@ func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 			folderStructure[fileBase] = []string{}
 			currentFolder = fileBase
 			// do directory stuff
-			fmt.Println("directory")
 		case mode.IsRegular():
 			// do file stuff
 			folderStructure[currentFolder] = append(folderStructure[currentFolder], fileBase)
-			fmt.Println("file")
 		}
 
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
 		}
-		fmt.Println("visited file or dir: %q\n", path)
+		// fmt.Println("visited file or dir: %q\n", path)
 		return nil
 	})
 	if err != nil {
-		fmt.Printf("error walking the path %q: %v\n", err)
+		// fmt.Printf("error walking the path %q: %v\n", err)
 		return
 	}
-	fmt.Println("FINAL", folderStructure)
+	// fmt.Println("FINAL", folderStructure)
 	output, _ := json.Marshal(folderStructure)
 	w.Write([]byte(output))
 
