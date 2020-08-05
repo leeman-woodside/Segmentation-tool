@@ -136,7 +136,7 @@ export default {
       img: new Image(),
       masterMat: '',
       originalImage: '',
-      matUpdate: '',
+      updateMat: '',
       maskViewFinal: '',
       rect: '',
       rectPoint1: {},
@@ -444,50 +444,6 @@ export default {
         this.backgroundPoints = []
       }
     },
-    //drawing and stuff
-    fg_bg_PointArrayTracker (p) {
-      if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
-        if (this.drawType === 'Fore point') {
-          this.foregroundPoints.push(p)
-          this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 1
-          
-        }
-        else if (this.drawType === 'Back point') {
-          this.backgroundPoints.push(p)
-          this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 0
-        }
-      }
-    },
-    draw (e) {
-      let drawPoint = {}
-      drawPoint.x = e.point.x + this.scrollX
-      drawPoint.y = e.point.y + this.scrollY
-      //allow drawing only in ROI
-      if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
-        this.drawing = true
-        cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
-        this.fg_bg_PointArrayTracker (drawPoint)
-        cv.imshow('canvasOutput', this.imageDraw)
-      }
-    },
-    //drawing foreground points
-    fgDraw () {
-      if (this.selected) {
-        this.drawLine = true
-        this.drawType = 'Fore point'
-        this.cursorType = 'pointer'
-        this.drawColor = new cv.Scalar(255, 0, 0, 255)
-      }
-    },
-    //drawing background points
-    bgDraw () {
-      if (this.selected) {
-        this.drawLine = true
-        this.drawType = 'Back point'
-        this.cursorType = 'pointer'
-        this.drawColor = new cv.Scalar(0, 255, 0, 255)
-      }
-    },
     //ROI
     rectangle (e) {
       this.rectColor = new cv.Scalar(110, 170, 255, 255)
@@ -505,6 +461,52 @@ export default {
       this.rect = new cv.Rect(Math.min(this.rectPoint2.x, this.rectPoint1.x), Math.min(this.rectPoint2.y, this.rectPoint1.y), rectWidth, rectHeight)
       cv.rectangle(this.imageDraw, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
       cv.imshow('canvasOutput', this.imageDraw)
+    },
+    //creates arrays to populate points object
+    //changes the pixel class of the updateMat
+    fg_bg_PointArrayTracker (p) {
+      if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
+        if (this.drawType === 'Fore point') {
+          this.foregroundPoints.push(p)
+          this.updateMat.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 1
+          
+        }
+        else if (this.drawType === 'Back point') {
+          this.backgroundPoints.push(p)
+          this.updateMat.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 0
+        }
+      }
+    },
+    //draws points on canvas
+    draw (e) {
+      let drawPoint = {}
+      drawPoint.x = e.point.x + this.scrollX
+      drawPoint.y = e.point.y + this.scrollY
+      //allow drawing only in ROI
+      if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
+        this.drawing = true
+        cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
+        this.fg_bg_PointArrayTracker (drawPoint)
+        cv.imshow('canvasOutput', this.imageDraw)
+      }
+    },
+    //foreground points
+    fgDraw () {
+      if (this.selected) {
+        this.drawLine = true
+        this.drawType = 'Fore point'
+        this.cursorType = 'pointer'
+        this.drawColor = new cv.Scalar(255, 0, 0, 255)
+      }
+    },
+    //background points
+    bgDraw () {
+      if (this.selected) {
+        this.drawLine = true
+        this.drawType = 'Back point'
+        this.cursorType = 'pointer'
+        this.drawColor = new cv.Scalar(0, 255, 0, 255)
+      }
     },
     //if more than one object requires segmentation in an image
     continueDraw () {
@@ -539,13 +541,13 @@ export default {
         this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
         if (this.points.fg.includes(undoPts)) {
           for (var i = 0; i < undoPts.length; i++) {
-            this.matUpdate.ucharPtr(undoPts[i].y * 0.5, undoPts[i].x * 0.5)[0] = 2
+            this.updateMat.ucharPtr(undoPts[i].y * 0.5, undoPts[i].x * 0.5)[0] = 2
           }
           this.points.fg.pop()
         }
         else if (this.points.bg.includes(this.undoPoints[this.undoPoints.length - 1])) {
           for (var j = 0; j < undoPts.length; j++) {
-            this.matUpdate.ucharPtr(undoPts[j].y * 0.5, undoPts[j].x * 0.5)[0] = 2
+            this.updateMat.ucharPtr(undoPts[j].y * 0.5, undoPts[j].x * 0.5)[0] = 2
           }
           this.points.bg.pop()
         }
@@ -595,8 +597,8 @@ export default {
         mode = cv.GC_INIT_WITH_RECT
       }
       cv.resize(maskView, maskView, new cv.Size(256, 256), 0, 0, cv.INTER_NEAREST)
-      cv.grabCut(maskView, this.matUpdate, resizeRect, bgdModel, fgdModel, 4, mode)
-      cv.resize(this.matUpdate, maskView, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
+      cv.grabCut(maskView, this.updateMat, resizeRect, bgdModel, fgdModel, 4, mode)
+      cv.resize(this.updateMat, maskView, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
       maskView = this.createMask(maskView).clone()
       bgdModel.delete(); fgdModel.delete()
       return maskView
@@ -636,7 +638,7 @@ export default {
       this.getFiles()
       this.masterMat = new cv.Mat()
       this.originalImage = new cv.Mat()
-      this.matUpdate = new cv.Mat()
+      this.updateMat = new cv.Mat()
       this.imageDraw = new cv.Mat()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       this.maskViewFinal = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))

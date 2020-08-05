@@ -133,7 +133,7 @@ export default {
     preventDefault (e) {
       e.preventDefault()
     },
-
+    //posting new images to the server
     onFileSelected (e) {
       var files = e.target.files
       for (let i = 0; i < files.length; i++) {
@@ -158,7 +158,7 @@ export default {
         // });
       }
     },
-
+    //gets the image and mask file paths from the server
     getFiles () {
       let promises = []
       let self = this
@@ -194,7 +194,7 @@ export default {
         console.log(error)
       })
     },
-
+    //retrieves the names of the folders of images
     getFolders () {
       this.folders = []
       for (let folder in this.image_Data) {
@@ -206,7 +206,7 @@ export default {
         console.log(this.folders)
       }
     },
-
+    //shows images from the folder selected
     showFiles (items) {
       if (items.length === 0) {
         return 
@@ -221,7 +221,7 @@ export default {
         })
       })
     },
-
+    //creates and downloads a zip file with folders and files of masks created
     generateZip () {
       console.log(ZipUtil.getBinaryContent)
       var zip = new Zip()
@@ -258,8 +258,6 @@ export default {
     this.getFiles()
     this.getFolders()
   }
-
-
 }
 </script>
 
