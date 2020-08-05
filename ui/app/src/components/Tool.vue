@@ -5,8 +5,8 @@
         <b-navbar-brand href="https://www.smartvisionworks.com/"></b-navbar-brand>
         <b-navbar-nav>
           <b-button class="nav-bar-button" v-b-toggle.sidebar-2>Instruction</b-button>
-            <b-button 
-              class="nav-bar-button"          
+            <b-button
+              class="nav-bar-button"
               v-b-toggle.sidebar-1
             >
               View Files
@@ -23,9 +23,8 @@
           </div>
         </template>
         <div class="px-3 py-2">
-          <b-table 
-            striped 
-            hover 
+          <b-table
+            hover
             :activeIndex = 0
             selectable
             select-mode="single"
@@ -36,10 +35,9 @@
           >
           </b-table>
           <br/>
-          <b-table 
+          <b-table
             id="files"
-            striped 
-            hover 
+            hover
             selectable
             select-mode="single"
             @row-selected="toggle"
@@ -49,7 +47,7 @@
             small
           >
             <template v-slot:cell(mask)="data">
-              <b-icon-check2-square v-if="mask_Data[activeFolder] && mask_Data[activeFolder].includes(data.item.image)"></b-icon-check2-square>
+              <b-icon-check2-square v-if="mask_Data[activeFolder] && mask_Data[activeFolder].includes(data.item.image)" style="color: green"></b-icon-check2-square>
             </template>
           </b-table>
         </div>
@@ -402,15 +400,14 @@ export default {
     },
     // Mouse Events
     mouseDown (e) {
-      console.log(this.drawLine)
-      if (!this.drawLine) {
+      if (!this.drawLine && this.activeFile != '') {
         this.rectPoint1.x = e.point.x + this.scrollX
         this.rectPoint1.y = e.point.y + this.scrollY
         console.log('setting rectPoint1: ', this.rectPoint1)
         this.rectangle(e)
         this.rectDrawn = true
       }
-      else {
+      if (this.drawLine) {
         if (this.points.fg.length === 0 && this.points.bg.length === 0) {
           var tmpImg = this.imageDraw.clone()
           this.undoMats.push(tmpImg)
@@ -421,11 +418,11 @@ export default {
       }
     },
     mouseDrag (e) {
-      if (!this.drawLine) {
+      if (!this.drawLine && this.activeFile != '') {
         this.rectangle(e)
         this.rectDrawn = true
       }
-      else {
+      if (this.drawLine) {
         this.draw(e)
       }
     },
@@ -735,4 +732,6 @@ export default {
 .refresh-button:hover {
   color: #343a40 !important;
 }
+.no-js #loader { display: none;  }
+.js #loader { display: block; position: absolute; left: 100px; top: 0; }
 </style>

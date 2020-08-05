@@ -42,9 +42,8 @@
             </div>
             <b-collapse id="cardSystems" visible>
               <b-card-text>
-                <b-table 
-                  striped 
-                  hover 
+                <b-table
+                  hover
                   selectable
                   select-mode="single"
                   @row-selected="showFiles"
@@ -74,7 +73,6 @@
             <b-collapse id="fileSystems" visible>
               <b-card-text>
                 <b-table 
-                  striped 
                   hover 
                   selectable
                   select-mode="single"
@@ -88,7 +86,7 @@
                   <template v-slot:cell(mask)="data">
                     <img 
                       v-if="mask_Data[activeFolder] && mask_Data[activeFolder].includes(data.item.image)"
-                      :src="`/masks/${activeFolder}/${data.item.image}`" 
+                      :src="`/masks/${activeFolder}/${data.item.image}?${Math.random()}`" 
                       style="height: 141px"
                     >
                   </template>

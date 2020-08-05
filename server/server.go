@@ -74,6 +74,7 @@ type Image struct {
 // 	json.NewEncoder(response).Encode(image)
 // }
 
+//uploads file to the server
 func UploadFile(response http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
 	uploadType := params["type"]
@@ -110,6 +111,7 @@ func UploadFile(response http.ResponseWriter, request *http.Request) {
 
 }
 
+//this gets the filepath and sends it as a string
 func GetServerLocation(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	fileType := params["type"]
