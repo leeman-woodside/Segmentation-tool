@@ -62,12 +62,12 @@
             <li><h6><b>3.</b></h6> In the second table that opens up select which image you want to start with.</li>
             <li><h6><b>4.</b></h6> Click and drag on the image to make a rectangle around desired object.</li>
             <li><h6><b>5.</b></h6>Click "Select" or press the spacebar to segment the desired area.</li>
-            <li><h6><b>6.</b></h6> If the outcome is acceptable click "Save".</li>
+            <li style="color:red;"><h6><b>6.</b></h6> If the outcome is acceptable click "Save".</li>
             <li><h6><b>7.</b></h6> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' on the keyboard and using the mouse, draw on the image using the respective tools for foreground and background areas.</li>
             <li><h6><b>8.</b></h6> Click "Select" again to re-segment on the new selections.</li>
             <li><h6><b>9.</b></h6> Continue this process on the image until desired segmentation has been achieved.</li>
             <li><h6><b>10.</b></h6> If you make a mistake using the foreground and background tools you can click "Undo" or press 'U' on the keyboard to go back to a previous selection.</li>
-            <li><h6><b>11.</b></h6> Click "Save" and repeat this process for each image.</li>
+            <li style="color:red;"><h6><b>11.</b></h6> Click "Save" and repeat this process for each image.</li>
             <li><h6><b>12.</b></h6> Good Job!</li>
           </ol>
         </div>
@@ -180,9 +180,11 @@ export default {
     }
   },
   methods: {
+    //disables a keyboard key's default action
     preventDefault (e) {
       e.preventDefault()
     },
+    //sets the index and loads the buffer array based on the file that is selected from the table
     toggle (items) {
       if (items.length === 0) {
         return 
@@ -191,7 +193,7 @@ export default {
       this.createBufferArray()
       this.resetImg()
     },
-
+    //this is the array of images that load ahead and behind of the current image being worked on
     createBufferArray() {
       this.bufferArray = []
       let popIndex = this.activeIndex
@@ -225,7 +227,7 @@ export default {
       }
       this.img.src = this.bufferArray[3].src
     },
-
+    //gets the images file paths from the server and puts that into two objects 
     getFiles () {
       let promises = []
       let self = this
@@ -259,7 +261,7 @@ export default {
         console.log(error)
       })
     },
-
+    //populates the folder table for the sidebar
     getFolders () {
       this.folders = []
       for (let folder in this.image_Data) {
@@ -270,10 +272,10 @@ export default {
           })
       }
     },
-
+    //populates the files table from whichever folder has been selected
     showFiles (items) {
       if (items.length === 0) {
-        return 
+        return
       }
       this.files = []
       this.activeFolder = items[0].folder_name
@@ -314,7 +316,6 @@ export default {
         self.next()
       })
     },
-
     // Images are shown from their file path on the server
     showImg () {
       this.originalImage = cv.imread(this.img)
@@ -399,7 +400,6 @@ export default {
         cv.imshow('canvasInput', blank)
       }
     },
-
     // Mouse Events
     mouseDown (e) {
       console.log(this.drawLine)
@@ -444,7 +444,6 @@ export default {
         this.backgroundPoints = []
       }
     },
-
     //drawing and stuff
     fg_bg_PointArrayTracker (p) {
       if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
@@ -556,7 +555,6 @@ export default {
         this.select()
       }
     },
-
     // selecting ROI
     select () {
       if (this.rectDrawn) {
@@ -618,6 +616,7 @@ export default {
       isFGMat.delete(); probFGMat.delete(); subMat.delete(); foreMask.delete()
       return maskTmp
     },
+    //adds current grabCutMask with the final mask
     addMask (mask) {
       cv.add(mask, this.grabCutMask, mask)
       cv.imshow('canvasMask', mask)
@@ -649,10 +648,8 @@ export default {
       this.img.onload = () => {
         this.showImg()
       }
-
       window.addEventListener('keydown', (e) => {
         console.log('key:', e)
-        // this.preventDefault(e)
         if (this.activeFile != '') {
           switch (e.code) {
             // case 'ArrowUp':
@@ -679,11 +676,9 @@ export default {
             //   break
             case 'ArrowLeft':
               this.prev()
-              this.resetImg()
               break
             case 'ArrowRight':
               this.next()
-              this.resetImg()
               break
             case 'Space':
               this.preventDefault(e)
