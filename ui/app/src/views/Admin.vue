@@ -105,7 +105,7 @@
 
 <script>
 import axios from 'axios'
-import * as FileSaver from 'FileSaver'
+import * as FileSaver from 'file-saver'
 import * as Zip from 'jszip'
 import * as ZipUtil from 'jszip-utils'
 
@@ -208,6 +208,9 @@ export default {
     },
 
     showFiles (items) {
+      if (items.length === 0) {
+        return 
+      }
       this.files = []
       this.activeFolder = items[0].folder_name
       let self = this

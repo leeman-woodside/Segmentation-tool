@@ -1,5 +1,5 @@
 <template>
-  <container fluid>
+  <b-container fluid>
     <div class="Tool" @mousedown="preventDefault">
       <b-navbar type="dark" variant="dark">
         <b-navbar-brand href="https://www.smartvisionworks.com/"></b-navbar-brand>
@@ -63,11 +63,12 @@
             <li><h6><b>4.</b></h6> Click and drag on the image to make a rectangle around desired object.</li>
             <li><h6><b>5.</b></h6>Click "Select" or press the spacebar to segment the desired area.</li>
             <li><h6><b>6.</b></h6> If the outcome is acceptable click "Save".</li>
-            <li><h6><b>7.</b></h6> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' on the keyboard and draw on the image using the respective tools for foreground and background areas.</li>
+            <li><h6><b>7.</b></h6> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' on the keyboard and using the mouse, draw on the image using the respective tools for foreground and background areas.</li>
             <li><h6><b>8.</b></h6> Click "Select" again to re-segment on the new selections.</li>
             <li><h6><b>9.</b></h6> Continue this process on the image until desired segmentation has been achieved.</li>
-            <li><h6><b>10.</b></h6> Click "Save" and repeat this process for each image.</li>
-            <li><h6><b>11.</b></h6> Good Job!</li>
+            <li><h6><b>10.</b></h6> If you make a mistake using the foreground and background tools you can click "Undo" or press 'U' on the keyboard to go back to a previous selection.</li>
+            <li><h6><b>11.</b></h6> Click "Save" and repeat this process for each image.</li>
+            <li><h6><b>12.</b></h6> Good Job!</li>
           </ol>
         </div>
       </b-sidebar>
@@ -77,7 +78,7 @@
         <canvas id="canvasMask" style="width: 512px; height: 512px; display: none;"></canvas>
       </div>
       <b-row class="justify-content-md-center">
-        <b-button-toolbar v-if="this.toolActive" key-nav aria-label="Toolbar with button groups">
+        <b-button-toolbar v-if="this.activeFile != ''" key-nav aria-label="Toolbar with button groups">
           <div>
             <b-button-group class="mx-1">
               <b-button b-button v-b-tooltip.hover.bottom="'(left-arrow)'" @click="prev">
@@ -109,7 +110,7 @@
         </b-button-toolbar>
       </b-row>
     </div>
-  </container>
+  </b-container>
 </template>
 
 <script>
@@ -121,39 +122,36 @@ export default {
   name: 'Tool',
   data () {
     return {
+      // Constants
+      width: 512,
+      height: 512,
+      alpha: -0.3,
+      beta: 1,
+      gamma: 1,
+
       scrollY: 0,
       scrollX: 0,
       activeFolder: '',
       bufferArray: [],
       img: new Image(),
-      width: 512,
-      height: 512,
       masterMat: '',
       originalImage: '',
       matUpdate: '',
-      greenMask: '',
-      redMask: '',
-      blank: '',
+      maskViewFinal: '',
       rect: '',
       rectPoint1: {},
       rectPoint2: {},
       drawColor: '',
       rectColor: '',
       drawType: '',
-      alpha: -0.5,
-      beta: 1,
-      gamma: 1,
       maskObjCount: 0,
       drawing: false,
       drawLine: false,
       selected: false,
-      continue: false,
-      toolActive: false,
       rectDrawn: false,
+      points: {fg:[], bg:[]},
       foregroundPoints: [],
       backgroundPoints: [],
-      undoPointsFg: [],
-      undoPointsBg: [],
       undoPoints: [],
       undoMats: [],
       image_Data: null,
@@ -186,6 +184,9 @@ export default {
       e.preventDefault()
     },
     toggle (items) {
+      if (items.length === 0) {
+        return 
+      }
       this.activeIndex = this.image_Data[this.activeFolder].indexOf(items[0].image)
       this.createBufferArray()
       this.resetImg()
@@ -223,15 +224,11 @@ export default {
         this.bufferArray.unshift(img3)
       }
       this.img.src = this.bufferArray[3].src
-      // for (var k = 0; k < this.bufferArray.length; k ++) {
-      //   console.log(this.bufferArray[k].src)
-      // }
     },
 
     getFiles () {
       let promises = []
       let self = this
-      this.toolActive = true
       promises.push(
         new Promise(function(resolve, reject) {
           axios.get('/imageLocation/images')
@@ -275,6 +272,9 @@ export default {
     },
 
     showFiles (items) {
+      if (items.length === 0) {
+        return 
+      }
       this.files = []
       this.activeFolder = items[0].folder_name
       let self = this
@@ -293,14 +293,16 @@ export default {
         }
       })
     },
-
+    //saves a finished mask to the server
     saveMask () {
-      cv.imshow('canvasMask', this.grabCutMask)
+      this.maskViewFinal = this.addMask(this.maskViewFinal)
+      cv.imshow('canvasMask', this.maskViewFinal)
       var canvas = document.getElementById('canvasMask')
       var self = this
       canvas.toBlob(function (blob) {
         const formData = new FormData()
         formData.append('masks', blob, `${self.activeFolder}/${self.activeFile}`)
+        console.log(formData)
         axios.post('/upload/masks', formData)
         .then((response) => {
           console.log(response);
@@ -313,7 +315,7 @@ export default {
       })
     },
 
-    // Canvas/Image navigation and output
+    // Images are shown from their file path on the server
     showImg () {
       this.originalImage = cv.imread(this.img)
       cv.resize(this.originalImage, this.originalImage, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
@@ -321,14 +323,14 @@ export default {
       cv.imshow('canvasOutput', this.masterMat)
       if (this.mask_Data[this.activeFolder] && this.mask_Data[this.activeFolder].includes(this.activeFile)) {
         var mask = new Image()
-        mask.src = `/masks/${this.activeFolder}/${this.activeFile}`
+        mask.src = `/masks/${this.activeFolder}/${this.activeFile}?${Math.random()}`
         mask.onload = () => {
           var mat = cv.imread(mask)
           cv.imshow('canvasInput', mat)
         }
       }
     },
-
+    // navagation thru the different images on the server
     prev () {
       this.bufferArray.pop()
       let img = new Image()
@@ -375,40 +377,45 @@ export default {
       }
       this.resetImg()
     },
-
+    //if all goes wrong on an image you can just hit reset to start over on that image
     resetImg () {
+      let blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(52, 64, 58, 255))
       this.cursorType = 'crosshair'
       this.selected = false
       this.drawLine = false
       this.drawing = false
-      this.continue = false
       this.rectDrawn = false
-      this.backgroundPoints = []
-      this.foregroundPoints = []
-      this.undoPointsFg = []
-      this.undoPointsBg = []
       this.undoPoints = []
       this.undoMats = []
       delete this.rect
       this.maskObjCount = 0
       this.grabCutMask.delete()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
+      this.maskViewFinal.delete()
+      this.maskViewFinal = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       this.img.src = this.bufferArray[3].src
       this.img.onload = () => {
         this.showImg()
-        cv.imshow('canvasInput', this.blank)
+        cv.imshow('canvasInput', blank)
       }
     },
 
     // Mouse Events
     mouseDown (e) {
+      console.log(this.drawLine)
       if (!this.drawLine) {
         this.rectPoint1.x = e.point.x + this.scrollX
         this.rectPoint1.y = e.point.y + this.scrollY
+        console.log('setting rectPoint1: ', this.rectPoint1)
         this.rectangle(e)
         this.rectDrawn = true
       }
       else {
+        if (this.points.fg.length === 0 && this.points.bg.length === 0) {
+          var tmpImg = this.imageDraw.clone()
+          this.undoMats.push(tmpImg)
+          console.log('pushed first mat to undoMat array baby')
+        }
         this.fg_bg_PointArrayTracker (e.point)
         this.draw(e)
       }
@@ -423,34 +430,31 @@ export default {
       }
     },
     mouseUp () {
-      if (this.foregroundPoints.length > 0 || this.backgroundPoints.length > 0) {
-        var lastMat = this.imageDraw.clone()
+      var lastMat = this.imageDraw.clone()
+      if (this.foregroundPoints.length > 0) {
         this.undoMats.push(lastMat)
+        this.undoPoints.push(this.foregroundPoints)
+        this.points.fg.push(this.foregroundPoints)
+        this.foregroundPoints = []
       }
-      if (this.undoPointsFg.length > 0) {
-        console.log('pushing fg UNDO points to UNDO array')
-        this.undoPoints.push(this.undoPointsFg)
-        this.undoPointsFg = []
-      }
-      if (this.undoPointsBg.length > 0) {
-        console.log('pushing bg UNDO points to UNDO array')
-        this.undoPoints.push(this.undoPointsBg)
-        this.undoPointsBg = []
+      if (this.backgroundPoints.length > 0) {
+        this.undoMats.push(lastMat)
+        this.undoPoints.push(this.backgroundPoints)
+        this.points.bg.push(this.backgroundPoints)
+        this.backgroundPoints = []
       }
     },
 
     //drawing and stuff
     fg_bg_PointArrayTracker (p) {
-      if (this.drawLine) {
+      if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
         if (this.drawType === 'Fore point') {
           this.foregroundPoints.push(p)
-          this.undoPointsFg.push(p)
           this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 1
           
         }
         else if (this.drawType === 'Back point') {
           this.backgroundPoints.push(p)
-          this.undoPointsBg.push(p)
           this.matUpdate.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 0
         }
       }
@@ -459,15 +463,15 @@ export default {
       let drawPoint = {}
       drawPoint.x = e.point.x + this.scrollX
       drawPoint.y = e.point.y + this.scrollY
-      this.drawing = true
-      cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
-      if (this.foregroundPoints.length === 0 && this.backgroundPoints.length === 0) {
-        var tmpImg = this.imageDraw.clone()
-        this.undoMats.push(tmpImg)
+      //allow drawing only in ROI
+      if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
+        this.drawing = true
+        cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
+        this.fg_bg_PointArrayTracker (drawPoint)
+        cv.imshow('canvasOutput', this.imageDraw)
       }
-      this.fg_bg_PointArrayTracker (drawPoint)
-      cv.imshow('canvasOutput', this.imageDraw)
     },
+    //drawing foreground points
     fgDraw () {
       if (this.selected) {
         this.drawLine = true
@@ -476,6 +480,7 @@ export default {
         this.drawColor = new cv.Scalar(255, 0, 0, 255)
       }
     },
+    //drawing background points
     bgDraw () {
       if (this.selected) {
         this.drawLine = true
@@ -484,8 +489,9 @@ export default {
         this.drawColor = new cv.Scalar(0, 255, 0, 255)
       }
     },
+    //ROI
     rectangle (e) {
-      this.rectColor = new cv.Scalar(0, 0, 255, 255)
+      this.rectColor = new cv.Scalar(110, 170, 255, 255)
       delete this.rect
       this.imageDraw.delete()
       this.rectPoint2.x = e.point.x + this.scrollX
@@ -501,65 +507,82 @@ export default {
       cv.rectangle(this.imageDraw, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
       cv.imshow('canvasOutput', this.imageDraw)
     },
+    //if more than one object requires segmentation in an image
     continueDraw () {
-      // cv.resize(this.originalImage, this.originalImage, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
-      let weightedMat = new cv.Mat()
-      let gcMask = this.grabCutMask.clone()
-      let originalMat = this.originalImage.clone()
+      this.maskViewFinal = this.addMask(this.maskViewFinal)
       this.maskObjCount += 1
-      this.continue = true
-      cv.imshow('canvasMask', this.grabCutMask)
       this.selected = false
       this.drawLine = false
       this.drawing = false
-      this.foregroundPoints = []
-      this.backgroundPoints = []
+      let weightedMat = new cv.Mat()
+      let gcMask = this.grabCutMask.clone()
+      let originalMat = this.originalImage.clone()
+      let maskFinal = this.maskViewFinal.clone()
       cv.cvtColor(gcMask, gcMask, 1, 0)
       cv.cvtColor(originalMat, originalMat, 1, 0)
-      cv.addWeighted(gcMask, 0.3, originalMat, this.beta, this.gamma, weightedMat)
+      cv.cvtColor(maskFinal, maskFinal, 1, 0)
+      cv.addWeighted(maskFinal, 0.3, originalMat, this.beta, this.gamma, weightedMat)
       this.masterMat = weightedMat.clone()
       cv.imshow('canvasOutput', this.masterMat)
       this.drawType = 'rect'
       this.cursorType = 'crosshair'
-      this.rectColor = new cv.Scalar(0, 0, 255, 255)
+      this.rectColor = new cv.Scalar(110, 170, 255, 255)
     },
+    //takes away last drawn points up to drawing the ROI
     undo () {
       if (this.undoPoints.length > 0) {
-        console.log('Foreground', this.foregroundPoints.length)
-        console.log('Background', this.backgroundPoints.length)
-        this.undoMats.splice(this.undoMats.length - 1, 1)
+        console.log('Foreground', this.points.fg)
+        console.log('Background', this.points.bg)
+        console.log(this.undoMats)
+        this.undoMats.pop()
         cv.imshow('canvasOutput', this.undoMats[this.undoMats.length - 1])
+        let undoPts = this.undoPoints[this.undoPoints.length - 1]
         this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
-        var self = this
-        this.foregroundPoints = this.foregroundPoints.filter(function (el) {
-          return !self.undoPoints[self.undoPoints.length - 1].includes(el)
-        })
-        this.backgroundPoints = this.backgroundPoints.filter(function (el) {
-          return !self.undoPoints[self.undoPoints.length - 1].includes(el)
-        })
-        console.log('Foreground', this.foregroundPoints.length)
-        console.log('Background', this.backgroundPoints.length)
-        this.undoPoints.splice(this.undoPoints.length - 1, 1)
+        if (this.points.fg.includes(undoPts)) {
+          for (var i = 0; i < undoPts.length; i++) {
+            this.matUpdate.ucharPtr(undoPts[i].y * 0.5, undoPts[i].x * 0.5)[0] = 2
+          }
+          this.points.fg.pop()
+        }
+        else if (this.points.bg.includes(this.undoPoints[this.undoPoints.length - 1])) {
+          for (var j = 0; j < undoPts.length; j++) {
+            this.matUpdate.ucharPtr(undoPts[j].y * 0.5, undoPts[j].x * 0.5)[0] = 2
+          }
+          this.points.bg.pop()
+        }
+        console.log('Foreground', this.points.fg)
+        console.log('Background', this.points.bg)
+        this.undoPoints.pop()
+        this.select()
       }
     },
 
-    // Grab-Cut and accessories
+    // selecting ROI
     select () {
       if (this.rectDrawn) {
+        let greenMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(152, 231, 153, 100))
+        this.rectColor = new cv.Scalar(0, 0, 255, 255)
         this.selected = true
         var weightedMat = new cv.Mat()
-        var greenOverlay = new cv.Mat()
-        var mask = this.grab_Cut()
+        var workingOverlay = new cv.Mat()
+        this.grabCutMask = this.grab_Cut()
+        var mask = this.grabCutMask.clone()
+        var finalMasks = this.maskViewFinal.clone()
         cv.cvtColor(mask, mask, 1, 0)
-        cv.cvtColor(this.masterMat, this.masterMat, 1, 0)
-        cv.addWeighted(this.greenMask, this.alpha, mask, this.beta, this.gamma, greenOverlay)
-        cv.addWeighted(greenOverlay, this.alpha, this.masterMat, this.beta, this.gamma, weightedMat)
+        cv.cvtColor(this.originalImage, this.originalImage, 1, 0)
+        cv.cvtColor(finalMasks, finalMasks, 1, 0)
+        cv.addWeighted(greenMask, this.alpha, mask, this.beta, this.gamma, workingOverlay)
+        cv.add(workingOverlay, finalMasks, workingOverlay)
+        cv.addWeighted(workingOverlay, this.alpha, this.originalImage, this.beta, this.gamma, weightedMat)
         cv.rectangle(weightedMat, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
-        cv.imshow('canvasInput', this.grabCutMask)
+        cv.add(finalMasks, mask, finalMasks)
+        cv.imshow('canvasInput', finalMasks)
         cv.imshow('canvasOutput', weightedMat)
-        greenOverlay.delete()
+        cv.imshow('canvasMask', this.maskViewFinal)
+        workingOverlay.delete()
       }
     },
+    //perform grabcut 
     grab_Cut () {
       var maskView = this.masterMat.clone()
       var bgdModel = new cv.Mat()
@@ -580,6 +603,7 @@ export default {
       bgdModel.delete(); fgdModel.delete()
       return maskView
     },
+    //make black and white visual mask
     createMask (maskTmp) {
       var blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       var isFGMat = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(cv.GC_FGD))
@@ -592,9 +616,13 @@ export default {
       cv.subtract(foreMask, subMat, foreMask)
       cv.add(blank, foreMask, maskTmp)
       isFGMat.delete(); probFGMat.delete(); subMat.delete(); foreMask.delete()
-      cv.add(this.grabCutMask, maskTmp, this.grabCutMask)
       return maskTmp
     },
+    addMask (mask) {
+      cv.add(mask, this.grabCutMask, mask)
+      cv.imshow('canvasMask', mask)
+      return mask
+    }
   },
 
   created () {
@@ -612,9 +640,7 @@ export default {
       this.matUpdate = new cv.Mat()
       this.imageDraw = new cv.Mat()
       this.grabCutMask = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
-      this.greenMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(152, 231, 153, 100))
-      // this.redMask = new cv.Mat(512, 512, cv.CV_8UC3, new cv.Scalar(231, 152, 165, 100))
-      this.blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(52, 64, 58, 255))
+      this.maskViewFinal = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(0, 0, 0, 255))
       var tool = new paper.Tool()
       tool.onMouseDown = this.mouseDown
       tool.onMouseDrag = this.mouseDrag
@@ -627,17 +653,17 @@ export default {
       window.addEventListener('keydown', (e) => {
         console.log('key:', e)
         // this.preventDefault(e)
-        if (this.toolActive) {
+        if (this.activeFile != '') {
           switch (e.code) {
             // case 'ArrowUp':
             //   if (this.rectDrawn) {
-            //     var greenOverlay = new cv.Mat()
+            //     var workingOverlay = new cv.Mat()
             //     cv.cvtColor(this.grabCutMask, this.grabCutMask, 1, 0)
             //     cv.cvtColor(this.masterMat, this.masterMat, 1, 0)
-            //     cv.addWeighted(this.greenMask, this.alpha, this.grabCutMask, this.beta, this.gamma, greenOverlay)
-            //     cv.addWeighted(greenOverlay, this.alpha, this.masterMat, this.beta, this.gamma, this.addWeightedMat)
+            //     cv.addWeighted(this.greenMask, this.alpha, this.grabCutMask, this.beta, this.gamma, workingOverlay)
+            //     cv.addWeighted(workingOverlay, this.alpha, this.masterMat, this.beta, this.gamma, this.addWeightedMat)
             //     cv.imshow('canvasInput', this.addWeightedMat)
-            //     greenOverlay.delete()
+            //     workingOverlay.delete()
             //   }
             //   break
             // case 'ArrowDown':
