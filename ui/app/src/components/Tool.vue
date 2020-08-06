@@ -57,16 +57,18 @@
           <ol style="text-align: left">
             <li><h6><b>1.</b></h6> Click "View Files".</li>
             <li><h6><b>2.</b></h6> In the sidebar menu, select in the top table which folder of images you want to work on.</li>
-            <li><h6><b>3.</b></h6> In the second table that opens up select which image you want to start with.</li>
-            <li><h6><b>4.</b></h6> Click and drag on the image to make a rectangle around desired object.</li>
-            <li><h6><b>5.</b></h6>Click "Select" or press the spacebar to segment the desired area.</li>
-            <li style="color:red;"><h6><b>6.</b></h6> If the outcome is acceptable click "Save".</li>
-            <li><h6><b>7.</b></h6> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' on the keyboard and using the mouse, draw on the image using the respective tools for foreground and background areas.</li>
-            <li><h6><b>8.</b></h6> Click "Select" again to re-segment on the new selections.</li>
-            <li><h6><b>9.</b></h6> Continue this process on the image until desired segmentation has been achieved.</li>
-            <li><h6><b>10.</b></h6> If you make a mistake using the foreground and background tools you can click "Undo" or press 'U' on the keyboard to go back to a previous selection.</li>
-            <li style="color:red;"><h6><b>11.</b></h6> Click "Save" and repeat this process for each image.</li>
-            <li><h6><b>12.</b></h6> Good Job!</li>
+            <li><h6><b>3.</b></h6> In the next table that opens select which image you want. If there is a green checked box, that image has been completed.</li>
+            <li><h6><b>4.</b></h6> On the image that appears, click and drag to make a rectangle around the object you want to use the tool on.</li>
+            <li><h6><b>5.</b></h6> Click "Run Tool" or press 'spacebar' to segment the desired area.</li>
+            <li><h6><b>6.</b></h6> <span style="color:red;">If the outcome is acceptable click "Save"</span>.</li>
+            <li><h6><b>7.</b></h6> If the rectangle turns dark blue but nothing else happens, go to next step.</li>
+            <li><h6><b>8.</b></h6> If adjustments need to be made use the "Foreground" and "Background" buttons or press 'F' and 'B' on the keyboard and using the mouse, draw on the image with the respective tools for foreground and background areas.</li>
+            <li><h6><b>9.</b></h6> Click "Run Tool", or 'spacebar', again to re-segment on the new selections.</li>
+            <li><h6><b>10.</b></h6> Repeat this process on the image until desired segmentation has been achieved.</li>
+            <li><h6><b>11.</b></h6> If you make a mistake using the foreground and background tools you can click "Undo" or press 'U' on the keyboard to go back to a previous selection.</li>
+            <li><h6><b>12.</b></h6> If there is another object that needs to be selected, after achieving desired segmentation on the first object click "Add Object", or press 'C', to select and add an additional object to the mask you are making. Follow the previous steps for additional objects for as many objects that need the tool.</li>
+            <li><h6><b>13.</b></h6> <span style="color:red;">Click "Save" and repeat this process for each image</span>.</li>
+            <li><h6><b>14.</b></h6> Good Job!</li>
           </ol>
         </div>
       </b-sidebar>
@@ -324,8 +326,14 @@ export default {
         var mask = new Image()
         mask.src = `/masks/${this.activeFolder}/${this.activeFile}?${Math.random()}`
         mask.onload = () => {
+          var weightedMat = new cv.Mat()
+          var originalImg = this.originalImage.clone()
           var mat = cv.imread(mask)
           cv.imshow('canvasInput', mat)
+          cv.cvtColor(mat, mat, 1, 0)
+          cv.cvtColor(originalImg, originalImg, 1, 0)
+          cv.addWeighted(mat, this.alpha, originalImg, this.beta, this.gamma, weightedMat)
+          cv.imshow('canvasOutput', weightedMat)
         }
       }
     },
