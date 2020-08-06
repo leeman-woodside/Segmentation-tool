@@ -572,6 +572,7 @@ export default {
         cv.add(workingOverlay, finalMasks, workingOverlay)
         cv.addWeighted(workingOverlay, this.alpha, this.originalImage, this.beta, this.gamma, weightedMat)
         cv.rectangle(weightedMat, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
+        this.imageDraw = weightedMat.clone()
         cv.add(finalMasks, mask, finalMasks)
         cv.imshow('canvasInput', finalMasks)
         cv.imshow('canvasOutput', weightedMat)
