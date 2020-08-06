@@ -20,9 +20,11 @@
     "file-saver": "^2.0.2",
     "jszip": "^3.5.0",
     "jszip-utils": "^0.1.0",
+    "nanobar": "^0.4.2",
     "opencv.js-webassembly": "^4.2.0",
     "paper": "^0.12.11",
     "vue": "^2.6.11",
+    "vue-progressbar": "^0.7.5",
     "vue-router": "^3.2.0"
   },
   "devDependencies": {

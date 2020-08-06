@@ -1,8 +1,28 @@
 <template>
   <div id="app">
     <router-view />
+    <vue-progress-bar></vue-progress-bar>
   </div>
 </template>
+
+<script>
+
+export default {
+  data() {
+    return {
+    }
+  },
+
+  beforeCreate() {
+    this.$Progress.start()
+  },
+
+  mounted() {
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("loader").style.display = "none";
+  }
+}
+</script>
 
 <style>
 body {

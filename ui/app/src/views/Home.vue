@@ -1,8 +1,5 @@
 <template>
   <div id="home">
-    <!-- <div class="col-sm-10 pt-1">
-      <b-progress :value="success" :variant="75"></b-progress>
-    </div> -->
     <Tool/>
   </div>
 </template>
@@ -12,13 +9,6 @@ import Tool from '../components/Tool.vue'
 
 export default {
   name: 'App',
-  // data() {
-  //   return {
-  //     bar: [
-  //       {variant: 'success', value: 75}
-  //     ]
-  //   }
-  // },
   components: {
     Tool
   }
@@ -37,5 +27,8 @@ html, body {
   background-position: right bottom;
   background-repeat: no-repeat;
   overflow: auto;
+}
+.bar {
+  background: aqua;
 }
 </style>

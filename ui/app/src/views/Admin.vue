@@ -253,6 +253,7 @@ export default {
     }
   },
   mounted () {
+    this.$Progress.finish()
     this.getFiles()
     this.getFolders()
   }

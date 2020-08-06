@@ -89,7 +89,7 @@
           </div>
           <div>
             <b-button-group  class="mx-1">
-              <b-button v-b-tooltip.hover.bottom="'(spacebar)'" @click="select">Select</b-button>
+              <b-button v-b-tooltip.hover.bottom="'(spacebar)'" @click="select">Run Tool</b-button>
               <b-button v-b-tooltip.hover.bpointer.bottom="'(F)'" @click="fgDraw">Foreground</b-button>
               <b-button v-b-tooltip.hover.bottom="'(B)'" @click="bgDraw">Background</b-button>
               <b-button v-b-tooltip.hover.bottom="'(C)'" @click="continueDraw">Add Object</b-button>
@@ -482,7 +482,7 @@ export default {
       //allow drawing only in ROI
       if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
         this.drawing = true
-        cv.circle(this.imageDraw, drawPoint, 2, this.drawColor, -1)
+        cv.circle(this.imageDraw, drawPoint, 1, this.drawColor, -1)
         this.fg_bg_PointArrayTracker (drawPoint)
         cv.imshow('canvasOutput', this.imageDraw)
       }
@@ -492,7 +492,7 @@ export default {
       if (this.selected) {
         this.drawLine = true
         this.drawType = 'Fore point'
-        this.cursorType = 'pointer'
+        this.cursorType = 'cell'
         this.drawColor = new cv.Scalar(255, 0, 0, 255)
       }
     },
@@ -501,7 +501,7 @@ export default {
       if (this.selected) {
         this.drawLine = true
         this.drawType = 'Back point'
-        this.cursorType = 'pointer'
+        this.cursorType = 'cell'
         this.drawColor = new cv.Scalar(0, 255, 0, 255)
       }
     },
@@ -633,6 +633,7 @@ export default {
   mounted () {
     cv['onRuntimeInitialized'] = () => { 
       this.getFiles()
+      this.$Progress.finish()
       this.masterMat = new cv.Mat()
       this.originalImage = new cv.Mat()
       this.updateMat = new cv.Mat()
@@ -647,6 +648,7 @@ export default {
       this.img.onload = () => {
         this.showImg()
       }
+
       window.addEventListener('keydown', (e) => {
         console.log('key:', e)
         if (this.activeFile != '') {
