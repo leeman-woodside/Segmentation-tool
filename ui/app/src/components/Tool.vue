@@ -111,11 +111,11 @@
       </b-row>
       <b-overlay :show="saveWarning" no-wrap spinner-type="none" blur="2px" bg-color="black">
         <template v-slot:overlay>
-          <b-card class="overlay-card">
+          <b-card style="background-color: #6c757d; color: white;">
             <h7><b>Cannot continue without saving current mask<b></h7>
             <br/>
-            <b-button @click="saveWarning = false" style="background-color: red;">Cancel</b-button>
-            <b-button @click="saveMask()" style="background-color: green;">Save</b-button>
+            <b-button @click="saveWarning = false" style="background-color: red; margin: 2px; border: none;">Cancel</b-button>
+            <b-button @click="saveMask()" style="background-color: green; margin: 2px; border: none;">Save</b-button>
           </b-card>
         </template>
       </b-overlay>
@@ -160,6 +160,7 @@ export default {
       selected: false,
       rectDrawn: false,
       saveWarning: false,
+      continue: false,
       points: {fg:[], bg:[]},
       foregroundPoints: [],
       backgroundPoints: [],
@@ -308,6 +309,7 @@ export default {
     },
     //saves a finished mask to the server
     saveMask () {
+      this.continue = false
       this.saveWarning = false
       this.selected = false
       this.maskViewFinal = this.addMask(this.maskViewFinal)
@@ -352,7 +354,7 @@ export default {
     },
     // navagation thru the different images on the server
     prev () {
-      if (this.selected) {
+      if (this.selected || this.continue) {
         console.log('selectedtrue')
         this.saveWarning = true
         return
@@ -380,7 +382,7 @@ export default {
       this.resetImg()
     },
     next () {
-      if (this.selected) {
+      if (this.selected || this.continue) {
         console.log('selectedtrue')
         this.saveWarning = true
         return
@@ -411,6 +413,7 @@ export default {
     resetImg () {
       let blank = new cv.Mat(512, 512, cv.CV_8UC1, new cv.Scalar(52, 64, 58, 255))
       this.cursorType = 'crosshair'
+      this.continue = false
       this.selected = false
       this.drawLine = false
       this.drawing = false
@@ -539,12 +542,12 @@ export default {
     },
     //if more than one object requires segmentation in an image
     continueDraw () {
+      this.continue = true
       this.maskViewFinal = this.addMask(this.maskViewFinal)
       this.maskObjCount += 1
       this.selected = false
       this.drawLine = false
       this.drawing = false
-      this.saveWarning = false
       let weightedMat = new cv.Mat()
       let gcMask = this.grabCutMask.clone()
       let originalMat = this.originalImage.clone()
