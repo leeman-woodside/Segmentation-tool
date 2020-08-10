@@ -109,6 +109,16 @@
           </div>
         </b-button-toolbar>
       </b-row>
+      <b-overlay :show="saveWarning" no-wrap spinner-type="none" blur="2px" bg-color="black">
+        <template v-slot:overlay>
+          <b-card class="overlay-card">
+            <h7><b>Cannot continue without saving current mask<b></h7>
+            <br/>
+            <b-button @click="saveWarning = false" style="background-color: red;">Cancel</b-button>
+            <b-button @click="saveMask()" style="background-color: green;">Save</b-button>
+          </b-card>
+        </template>
+      </b-overlay>
     </div>
   </b-container>
 </template>
@@ -149,6 +159,7 @@ export default {
       drawLine: false,
       selected: false,
       rectDrawn: false,
+      saveWarning: false,
       points: {fg:[], bg:[]},
       foregroundPoints: [],
       backgroundPoints: [],
@@ -297,6 +308,8 @@ export default {
     },
     //saves a finished mask to the server
     saveMask () {
+      this.saveWarning = false
+      this.selected = false
       this.maskViewFinal = this.addMask(this.maskViewFinal)
       cv.imshow('canvasMask', this.maskViewFinal)
       var canvas = document.getElementById('canvasMask')
@@ -339,6 +352,11 @@ export default {
     },
     // navagation thru the different images on the server
     prev () {
+      if (this.selected) {
+        console.log('selectedtrue')
+        this.saveWarning = true
+        return
+      }
       this.bufferArray.pop()
       let img = new Image()
       let index = this.activeIndex
@@ -362,6 +380,11 @@ export default {
       this.resetImg()
     },
     next () {
+      if (this.selected) {
+        console.log('selectedtrue')
+        this.saveWarning = true
+        return
+      }
       this.bufferArray.shift()
       let img = new Image()
       let index = this.activeIndex
@@ -392,6 +415,7 @@ export default {
       this.drawLine = false
       this.drawing = false
       this.rectDrawn = false
+      this.saveWarning = false
       this.undoPoints = []
       this.undoMats = []
       delete this.rect
@@ -520,6 +544,7 @@ export default {
       this.selected = false
       this.drawLine = false
       this.drawing = false
+      this.saveWarning = false
       let weightedMat = new cv.Mat()
       let gcMask = this.grabCutMask.clone()
       let originalMat = this.originalImage.clone()

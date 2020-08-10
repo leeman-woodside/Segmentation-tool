@@ -2,7 +2,7 @@
 <b-container fluid>
   <div class="Tool" @mousedown="preventDefault">
     <b-navbar type="dark" variant="dark">
-      <b-navbar-brand href="http://localhost:8082/#/"></b-navbar-brand>
+      <b-navbar-brand href="http://localhost:80"></b-navbar-brand>
       <b-navbar-nav>
           <input
             style="display: none"
