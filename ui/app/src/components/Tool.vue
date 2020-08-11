@@ -75,7 +75,7 @@
       <div style="padding: 20px">
         <canvas id="canvasOutput" ref="canvasOutput" style="width: 512px; height: 512px;" :style="{cursor: cursorType}"></canvas>
         <canvas id="canvasInput" style="width: 512px; height: 512px;"></canvas>
-        <canvas id="canvasMask" style="width: 512px; height: 512px; display: none;"></canvas>
+        <canvas id="canvasMask" style="display: none;"></canvas>
       </div>
       <b-row class="justify-content-md-center">
         <b-button-toolbar v-if="this.activeFile != ''" key-nav aria-label="Toolbar with button groups">
@@ -111,11 +111,11 @@
       </b-row>
       <b-overlay :show="saveWarning" no-wrap spinner-type="none" blur="2px" bg-color="black">
         <template v-slot:overlay>
-          <b-card style="background-color: #6c757d; color: white;">
+          <b-card style="background-color: transparent; color: white;">
             <h7><b>Cannot continue without saving current mask<b></h7>
-            <br/>
-            <b-button @click="saveWarning = false" style="background-color: red; margin: 2px; border: none;">Cancel</b-button>
-            <b-button @click="saveMask()" style="background-color: green; margin: 2px; border: none;">Save</b-button>
+            <br/><br/>
+            <b-button @click="saveWarning = false" style="background-color: red; margin: 5px; border: none;">Cancel</b-button>
+            <b-button @click="saveMask()" style="background-color: green; margin: 5px; border: none;">Save</b-button>
           </b-card>
         </template>
       </b-overlay>
@@ -146,6 +146,7 @@ export default {
       img: new Image(),
       masterMat: '',
       originalImage: '',
+      originalSize: '',
       updateMat: '',
       maskViewFinal: '',
       rect: '',
@@ -166,6 +167,7 @@ export default {
       backgroundPoints: [],
       undoPoints: [],
       undoMats: [],
+      allPoints: [],
       image_Data: null,
       mask_Data: null,
       activeIndex: -1,
@@ -313,8 +315,10 @@ export default {
       this.saveWarning = false
       this.selected = false
       this.maskViewFinal = this.addMask(this.maskViewFinal)
+      cv.resize(this.maskViewFinal, this.maskViewFinal, new cv.Size(this.originalSize.cols, this.originalSize.rows), 0, 0, cv.INTER_NEAREST)
       cv.imshow('canvasMask', this.maskViewFinal)
       var canvas = document.getElementById('canvasMask')
+      console.log(canvas)
       var self = this
       canvas.toBlob(function (blob) {
         const formData = new FormData()
@@ -334,6 +338,8 @@ export default {
     // Images are shown from their file path on the server
     showImg () {
       this.originalImage = cv.imread(this.img)
+      this.originalSize = cv.imread(this.img)
+      console.log(this.originalSize.cols, this.originalSize.rows)
       cv.resize(this.originalImage, this.originalImage, new cv.Size(512, 512), 0, 0, cv.INTER_NEAREST)
       this.masterMat = this.originalImage.clone()
       cv.imshow('canvasOutput', this.masterMat)
@@ -421,6 +427,7 @@ export default {
       this.saveWarning = false
       this.undoPoints = []
       this.undoMats = []
+      this.allPoints = []
       delete this.rect
       this.maskObjCount = 0
       this.grabCutMask.delete()
@@ -483,8 +490,8 @@ export default {
       this.imageDraw.delete()
       this.rectPoint2.x = e.point.x + this.scrollX
       this.rectPoint2.y = e.point.y + this.scrollY
-      this.rectPoint2.x = this.rectPoint2.x > this.width ? this.width - 2 : this.rectPoint2.x
-      this.rectPoint2.y = this.rectPoint2.y > this.height ? this.height - 2 : this.rectPoint2.y
+      this.rectPoint2.x = this.rectPoint2.x > this.width ? this.width - 1 : this.rectPoint2.x
+      this.rectPoint2.y = this.rectPoint2.y > this.height ? this.height - 1 : this.rectPoint2.y
       this.rectPoint2.x = this.rectPoint2.x < 0 ? 1 : this.rectPoint2.x
       this.rectPoint2.y = this.rectPoint2.y < 0 ? 1 : this.rectPoint2.y
       var rectWidth = Math.abs(this.rectPoint2.x - this.rectPoint1.x)
@@ -497,6 +504,9 @@ export default {
     //creates arrays to populate points object
     //changes the pixel class of the updateMat
     fg_bg_PointArrayTracker (p) {
+      p.x = p.x + this.scrollX
+      p.y = p.y + this.scrollY
+      // this.allPoints.push(p)
       if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
         if (this.drawType === 'Fore point') {
           this.foregroundPoints.push(p)
@@ -514,10 +524,13 @@ export default {
       let drawPoint = {}
       drawPoint.x = e.point.x + this.scrollX
       drawPoint.y = e.point.y + this.scrollY
+      // console.log(this.allPoints)
       //allow drawing only in ROI
       if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
         this.drawing = true
         cv.circle(this.imageDraw, drawPoint, 1, this.drawColor, -1)
+        // cv.line(this.imageDraw, this.allPoints[this.allPoints.length - 2], drawPoint, this.drawColor, 1)
+        // this.allPoints.pop()
         this.fg_bg_PointArrayTracker (drawPoint)
         cv.imshow('canvasOutput', this.imageDraw)
       }

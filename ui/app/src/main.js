@@ -1,4 +1,5 @@
 import Vue from "vue";
+import Vuex from 'vuex'
 import App from "./App.vue";
 import router from "./router";
 import "./styles/global.scss"
@@ -8,6 +9,7 @@ import VueProgressBar from 'vue-progressbar'
 import "bootstrap-vue/dist/bootstrap-vue.css";
 import "bootstrap/dist/css/bootstrap.css";
 
+Vue.use(Vuex)
 Vue.use(BootstrapVue);
 Vue.use(BootstrapVueIcons);
 Vue.use(VueProgressBar, {

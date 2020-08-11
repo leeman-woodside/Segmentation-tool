@@ -40,7 +40,10 @@
         e.preventDefault()
       },
       loginUser () {
-        
+        // const { username, password } = this
+        // this.$store.dispatch('REQUEST', { username, password }).then(() => {
+        //   this.$router.push('/')
+        // })
       }
     }
   }
