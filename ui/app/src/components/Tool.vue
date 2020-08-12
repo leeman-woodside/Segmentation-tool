@@ -153,6 +153,7 @@ export default {
       // Constants
       width: 512,
       height: 512,
+      scaleFactor: 0.5,
       alpha: -0.3,
       beta: 1,
       gamma: 1,
@@ -169,6 +170,8 @@ export default {
       probFgScalar: '',
       countScalar: '',
       zeroScalar: '',
+      bgScalar: '',
+      updateColor: '',
 
       scrollY: 0,
       scrollX: 0,
@@ -498,11 +501,11 @@ export default {
         this.rectDrawn = true
       }
       if (this.drawLine) {
-        if (this.points.fg.length === 0 && this.points.bg.length === 0) {
-          this.undoMats.push(this.imageDraw.clone())
-          console.log('pushed first mat to undoMat array baby')
-        }
-        this.fg_bg_PointArrayTracker (e.point)
+        // if (this.points.fg.length === 0 && this.points.bg.length === 0) {
+        //   this.undoMats.push(this.imageDraw.clone())
+        //   console.log('pushed first mat to undoMat array baby')
+        // }
+        // this.fg_bg_PointArrayTracker (e.point)
         this.draw(e)
       }
     },
@@ -516,17 +519,21 @@ export default {
       }
     },
     mouseUp () {
-      if (this.foregroundPoints.length > 0) {
-        this.undoMats.push(this.imageDraw.clone())
-        this.undoPoints.push(this.foregroundPoints)
-        this.points.fg.push(this.foregroundPoints)
-        this.foregroundPoints = []
-      }
-      if (this.backgroundPoints.length > 0) {
-        this.undoMats.push(this.imageDraw.clone())
-        this.undoPoints.push(this.backgroundPoints)
-        this.points.bg.push(this.backgroundPoints)
-        this.backgroundPoints = []
+      // if (this.foregroundPoints.length > 0) {
+      //   this.undoMats.push(this.imageDraw.clone())
+      //   this.undoPoints.push(this.foregroundPoints)
+      //   this.points.fg.push(this.foregroundPoints)
+      //   this.foregroundPoints = []
+      // }
+      // if (this.backgroundPoints.length > 0) {
+      //   this.undoMats.push(this.imageDraw.clone())
+      //   this.undoPoints.push(this.backgroundPoints)
+      //   this.points.bg.push(this.backgroundPoints)
+      //   this.backgroundPoints = []
+      // }
+      if (this.drawing) {
+        console.log('adding update mat to array')
+        this.undoMats.push(this.updateMat.clone())
       }
     },
     //ROI
@@ -549,35 +556,36 @@ export default {
     },
     //creates arrays to populate points object
     //changes the pixel class of the updateMat
-    fg_bg_PointArrayTracker (p) {
-      // p.x = p.x + this.scrollX
-      // p.y = p.y + this.scrollY
-      // this.allPoints.push(p)
-      if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
-        if (this.drawType === 'Fore point') {
-          this.foregroundPoints.push(p)
-          this.updateMat.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 1
+    // fg_bg_PointArrayTracker (p) {
+    //   if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
+    //     if (this.drawType === 'Fore point') {
+    //       this.foregroundPoints.push(p)
+    //       this.updateMat.ucharPtr(p.y * this.scaleFactor, p.x * this.scaleFactor)[0] = 1
           
-        }
-        else if (this.drawType === 'Back point') {
-          this.backgroundPoints.push(p)
-          this.updateMat.ucharPtr(p.y * 0.5, p.x * 0.5)[0] = 0
-        }
-      }
-    },
+    //     }
+    //     else if (this.drawType === 'Back point') {
+    //       this.backgroundPoints.push(p)
+    //       this.updateMat.ucharPtr(p.y * this.scaleFactor, p.x * this.scaleFactor)[0] = 0
+    //     }
+    //   }
+    // },
     //draws points on canvas
     draw (e) {
       let drawPoint = {}
       drawPoint.x = e.point.x + this.scrollX
       drawPoint.y = e.point.y + this.scrollY
+      let resizeDP = {}
+      resizeDP.x = (e.point.x + this.scrollX) * this.scaleFactor
+      resizeDP.y = (e.point.y + this.scrollY) * this.scaleFactor
       // console.log(this.allPoints)
       //allow drawing only in ROI
       if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
         this.drawing = true
-        cv.circle(this.imageDraw, drawPoint, 1, this.drawColor, -1)
+        cv.circle(this.imageDraw, drawPoint, 4, this.drawColor, -1)
+        cv.circle(this.updateMat, resizeDP, 4, this.updateColor, -1)
         // cv.line(this.imageDraw, this.allPoints[this.allPoints.length - 2], drawPoint, this.drawColor, 1)
         // this.allPoints.pop()
-        this.fg_bg_PointArrayTracker (drawPoint)
+        // this.fg_bg_PointArrayTracker (drawPoint)
         cv.imshow('canvasOutput', this.imageDraw)
       }
     },
@@ -588,6 +596,7 @@ export default {
         this.drawType = 'Fore point'
         this.cursorType = 'cell'
         this.drawColor = this.red
+        this.updateColor = this.fgScalar 
       }
     },
     //background points
@@ -597,6 +606,7 @@ export default {
         this.drawType = 'Back point'
         this.cursorType = 'cell'
         this.drawColor = this.green
+        this.updateColor = this.bgScalar
       }
     },
     //if more than one object requires segmentation in an image
@@ -624,31 +634,41 @@ export default {
     },
     //takes away last drawn points up to drawing the ROI
     undo () {
-      if (this.undoPoints.length > 0) {
-        console.log('Foreground', this.points.fg)
-        console.log('Background', this.points.bg)
-        console.log(this.undoMats)
-        let undoPts = this.undoPoints[this.undoPoints.length - 1]
+      if (this.undoMats.length > 0) {
+        // console.log('Foreground', this.points.fg)
+        // console.log('Background', this.points.bg)
+        // console.log(this.undoMats)
+        // let undoPts = this.undoPoints[this.undoPoints.length - 1]
+        // this.undoMats.pop().delete()
+        // this.imageDraw.delete()
+        // this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
+        // cv.imshow('canvasOutput', this.imageDraw)
+        // if (this.points.fg.includes(undoPts)) {
+        //   for (var i = 0; i < undoPts.length; i++) {
+        //     this.updateMat.ucharPtr(undoPts[i].y * this.scaleFactor, undoPts[i].x * this.scaleFactor)[0] = 2
+        //   }
+        //   this.points.fg.pop()
+        // }
+        // else if (this.points.bg.includes(undoPts)) {
+        //   for (var j = 0; j < undoPts.length; j++) {
+        //     this.updateMat.ucharPtr(undoPts[j].y * this.scaleFactor, undoPts[j].x * this.scaleFactor)[0] = 2
+        //   }
+        //   this.points.bg.pop()
+        // }
+        // console.log('Foreground', this.points.fg)
+        // console.log('Background', this.points.bg)
+        // this.undoPoints.pop()
         this.undoMats.pop().delete()
-        this.imageDraw.delete()
-        this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
-        cv.imshow('canvasOutput', this.imageDraw)
-        if (this.points.fg.includes(undoPts)) {
-          for (var i = 0; i < undoPts.length; i++) {
-            this.updateMat.ucharPtr(undoPts[i].y * 0.5, undoPts[i].x * 0.5)[0] = 2
-          }
-          this.points.fg.pop()
+        // this.updateMat.delete()
+        if (this.undoMats.length === 0) {
+          this.updateMat = new cv.Mat()
+          this.drawing = false
+          this.select()
         }
-        else if (this.points.bg.includes(undoPts)) {
-          for (var j = 0; j < undoPts.length; j++) {
-            this.updateMat.ucharPtr(undoPts[j].y * 0.5, undoPts[j].x * 0.5)[0] = 2
-          }
-          this.points.bg.pop()
+        else {
+          this.updateMat = this.undoMats[this.undoMats.length - 1]
+          this.select()
         }
-        console.log('Foreground', this.points.fg)
-        console.log('Background', this.points.bg)
-        this.undoPoints.pop()
-        this.select()
       }
     },
     // selecting ROI
@@ -684,7 +704,7 @@ export default {
       var bgdModel = new cv.Mat()
       var fgdModel = new cv.Mat()
       var mode
-      var resizeRect = new cv.Rect(this.rect.x * 0.5, this.rect.y * 0.5, this.rect.width * 0.5, this.rect.height * 0.5)
+      var resizeRect = new cv.Rect(this.rect.x * this.scaleFactor, this.rect.y * this.scaleFactor, this.rect.width * this.scaleFactor, this.rect.height * this.scaleFactor)
       cv.cvtColor(maskView, maskView, 1, 0)
       if (this.drawing) {
         mode = cv.GC_INIT_WITH_MASK
@@ -745,6 +765,7 @@ export default {
       this.lightBlue = new cv.Scalar(110, 170, 255, 255)
       this.greenMaskScalar = new cv.Scalar(152, 231, 153, 100)
       this.fgScalar = new cv.Scalar(cv.GC_FGD)
+      this.bgScalar = new cv.Scalar(cv.GC_BGD)
       this.probFgScalar = new cv.Scalar(cv.GC_PR_FGD)
       this.countScalar = new cv.Scalar(this.maskObjCount)
       this.zeroScalar = new cv.Scalar(0)
