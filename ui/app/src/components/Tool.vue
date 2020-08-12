@@ -11,7 +11,6 @@
             >
               View Files
             </b-button>
-            <b-button @click="resetOpenCV">Reset OpenCV</b-button>
         </b-navbar-nav>
       </b-navbar>
       <b-sidebar
@@ -226,11 +225,6 @@ export default {
     }
   },
   methods: {
-    //reset opencv.js
-    resetOpenCV () {
-      console.log(cv.getMemory())
-      console.log(cv)
-    },
     //disables a keyboard key's default action
     preventDefault (e) {
       e.preventDefault()
