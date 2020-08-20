@@ -1,9 +1,9 @@
 <template>
   <b-container fluid>
-    <div class="Tool" @mousedown="preventDefault">
+    <div class="Tool" >
       <b-navbar type="dark" variant="dark">
         <b-navbar-brand href="https://www.smartvisionworks.com/"></b-navbar-brand>
-        <b-navbar-nav>
+        <b-navbar-nav @mousedown="preventDefault">
           <b-button class="nav-bar-button" v-b-toggle.sidebar-backdrop>Instruction</b-button>
             <b-button
               class="nav-bar-button"
@@ -20,14 +20,14 @@
         shadow
       >
         <template v-slot:title>
-          <div>
+          <div @mousedown="preventDefault">
             Files
             <b-button class="refresh-button" @click="getFiles">
               <b-icon-arrow-clockwise></b-icon-arrow-clockwise>
             </b-button>
           </div>
         </template>
-        <div class="px-3 py-2">
+        <div class="px-3 py-2" @mousedown="preventDefault">
           <b-table
             hover
             :activeIndex = 0
@@ -85,7 +85,7 @@
         </div>
       </b-sidebar>
       <b-row class="justify-content-md-center">
-        <b-col cols="7">
+        <b-col cols="auto">
           <b-card style="background-color: #6c757d; margin-top: 20px;">
             <div>
               <canvas id="canvasOutput" ref="canvasOutput" style="width: 512px; height: 512px;" :style="{cursor: cursorType}"></canvas>
@@ -94,7 +94,7 @@
             </div>
             <b-row class="justify-content-md-center">
               <b-button-toolbar v-if="this.activeFile != ''" key-nav aria-label="Toolbar with button groups">
-                <div>
+                <div @mousedown="preventDefault">
                   <b-button-group class="mx-1">
                     <b-button b-button v-b-tooltip.hover.bottom="'(left-arrow)'" @click="prev">
                       <b-icon icon="arrow-left" aria-hidden="true"></b-icon>
@@ -104,12 +104,12 @@
                     </b-button>
                   </b-button-group>
                 </div>
-                <div>
-                  <b-button-group  class="mx-1">
+                <div @mousedown="preventDefault">
+                  <b-button-group  class="mx-1" >
                     <b-button v-b-tooltip.hover.bottom="'(spacebar)'" @click="select">Run Tool</b-button>
                     <b-button v-b-tooltip.hover.bpointer.bottom="'(F)'" @click="fgDraw">Foreground</b-button>
                     <b-button v-b-tooltip.hover.bottom="'(B)'" @click="bgDraw">Background</b-button>
-                    <b-button v-b-tooltip.hover.bottom="'(C)'" @click="continueDraw">Add Object</b-button>
+                    <b-button v-if="selected" v-b-tooltip.hover.bottom="'(C)'" @click="continueDraw">Add Object</b-button>
                     <b-button v-b-tooltip.hover.bottom="'(U)'" @click="undo">
                       <b-icon icon="arrow-counterclockwise" aria-hidden="true"></b-icon>
                       Undo
@@ -117,17 +117,20 @@
                     <b-button v-b-tooltip.hover.bottom="'(R)'" @click="resetImg">Reset</b-button>
                   </b-button-group>
                 </div>
-                <div>
+                <div @mousedown="preventDefault">
                   <b-button-group  class="mx-1">
                     <b-button v-b-tooltip.hover.bottom="'(S)'" v-if="selected" @click="saveMask">Save</b-button>
                   </b-button-group>
+                </div>
+                <div>
+                  <b-form-input type="range" v-model="cursorSize" min="1" max="10" step="1" @mouseup="preventDefault"></b-form-input> Cursor Size: {{cursorSize}} px
                 </div>
               </b-button-toolbar>
             </b-row>
           </b-card>
         </b-col>
       </b-row>
-      <b-overlay :show="saveWarning" no-wrap spinner-type="none" blur="2px" bg-color="black">
+      <b-overlay :show="saveWarning" no-wrap spinner-type="none" blur="2px" bg-color="black" @mousedown="preventDefault">
         <template v-slot:overlay>
           <b-card style="background-color: transparent; color: white;">
             <h7><b>Cannot continue without saving current mask<b></h7>
@@ -154,6 +157,7 @@ export default {
       width: 512,
       height: 512,
       scaleFactor: 0.5,
+      cursorSize: 4,
       alpha: -0.3,
       beta: 1,
       gamma: 1,
@@ -554,21 +558,6 @@ export default {
       cv.rectangle(this.imageDraw, this.rectPoint1, this.rectPoint2, this.rectColor, 2)
       cv.imshow('canvasOutput', this.imageDraw)
     },
-    //creates arrays to populate points object
-    //changes the pixel class of the updateMat
-    // fg_bg_PointArrayTracker (p) {
-    //   if (this.drawLine && p.x > this.rect.x && p.y > this.rect.y && p.x < (this.rect.x + this.rect.width) && p.y < (this.rect.y + this.rect.height)) {
-    //     if (this.drawType === 'Fore point') {
-    //       this.foregroundPoints.push(p)
-    //       this.updateMat.ucharPtr(p.y * this.scaleFactor, p.x * this.scaleFactor)[0] = 1
-          
-    //     }
-    //     else if (this.drawType === 'Back point') {
-    //       this.backgroundPoints.push(p)
-    //       this.updateMat.ucharPtr(p.y * this.scaleFactor, p.x * this.scaleFactor)[0] = 0
-    //     }
-    //   }
-    // },
     //draws points on canvas
     draw (e) {
       let drawPoint = {}
@@ -577,12 +566,11 @@ export default {
       let resizeDP = {}
       resizeDP.x = (e.point.x + this.scrollX) * this.scaleFactor
       resizeDP.y = (e.point.y + this.scrollY) * this.scaleFactor
-      // console.log(this.allPoints)
       //allow drawing only in ROI
       if (drawPoint.x > this.rect.x && drawPoint.y > this.rect.y && drawPoint.x < (this.rect.x + this.rect.width) && drawPoint.y < (this.rect.y + this.rect.height)) {
         this.drawing = true
-        cv.circle(this.imageDraw, drawPoint, 4, this.drawColor, -1)
-        cv.circle(this.updateMat, resizeDP, 4, this.updateColor, -1)
+        cv.circle(this.imageDraw, drawPoint, Number(this.cursorSize), this.drawColor, -1)
+        cv.circle(this.updateMat, resizeDP, Number(this.cursorSize), this.updateColor, -1)
         // cv.line(this.imageDraw, this.allPoints[this.allPoints.length - 2], drawPoint, this.drawColor, 1)
         // this.allPoints.pop()
         // this.fg_bg_PointArrayTracker (drawPoint)
@@ -635,31 +623,7 @@ export default {
     //takes away last drawn points up to drawing the ROI
     undo () {
       if (this.undoMats.length > 0) {
-        // console.log('Foreground', this.points.fg)
-        // console.log('Background', this.points.bg)
-        // console.log(this.undoMats)
-        // let undoPts = this.undoPoints[this.undoPoints.length - 1]
-        // this.undoMats.pop().delete()
-        // this.imageDraw.delete()
-        // this.imageDraw = this.undoMats[this.undoMats.length - 1].clone()
-        // cv.imshow('canvasOutput', this.imageDraw)
-        // if (this.points.fg.includes(undoPts)) {
-        //   for (var i = 0; i < undoPts.length; i++) {
-        //     this.updateMat.ucharPtr(undoPts[i].y * this.scaleFactor, undoPts[i].x * this.scaleFactor)[0] = 2
-        //   }
-        //   this.points.fg.pop()
-        // }
-        // else if (this.points.bg.includes(undoPts)) {
-        //   for (var j = 0; j < undoPts.length; j++) {
-        //     this.updateMat.ucharPtr(undoPts[j].y * this.scaleFactor, undoPts[j].x * this.scaleFactor)[0] = 2
-        //   }
-        //   this.points.bg.pop()
-        // }
-        // console.log('Foreground', this.points.fg)
-        // console.log('Background', this.points.bg)
-        // this.undoPoints.pop()
         this.undoMats.pop().delete()
-        // this.updateMat.delete()
         if (this.undoMats.length === 0) {
           this.updateMat = new cv.Mat()
           this.drawing = false
@@ -716,9 +680,7 @@ export default {
       cv.grabCut(maskView, this.updateMat, resizeRect, bgdModel, fgdModel, 4, mode)
       cv.resize(this.updateMat, maskView, this.imageViewSize, 0, 0, cv.INTER_NEAREST)
       this.createMask(maskView)
-      // this.grabCutMask = maskView.clone()
       bgdModel.delete(); fgdModel.delete(); maskView.delete()
-      // return maskView
     },
     //make black and white visual mask
     createMask (maskTmp) {
